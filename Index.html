@@ -665,7 +665,7 @@ function cashFlowType(row){
  const category=String(row.category||'');
  return (dict.incomeCategories||[]).includes(category)&&!(dict.categories||[]).includes(category)?'income':'expense';
 }
-function grouped(rowsIn){
+function grouped(rowsIn,includeZero=false){
  const mp=new Map();
  for(const r of rowsIn){
   const type=cashFlowType(r),cat=categoryText(r.category),key=type+'|'+cat;
@@ -677,7 +677,7 @@ function grouped(rowsIn){
    x.byDay[day]=(x.byDay[day]||0)+num;
   }
  }
- return [...mp.values()].filter(v=>v.total!==0).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+ return [...mp.values()].filter(v=>includeZero||v.total!==0).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
 }
 function groupedSections(list){
  return [{type:'income',title:'ПОСТУПЛЕНИЯ',sumTitle:'Итого поступления'},{type:'expense',title:'СПИСАНИЯ',sumTitle:'Итого списания'}].map(section=>({
@@ -945,11 +945,23 @@ function updateRoleVisibility(){
  $('limitedRights').classList.toggle('hidden',isAdmin);
  document.querySelectorAll('.editopt,.tab-editopt').forEach(e=>{e.disabled=e.classList.contains('tab-editopt')&&e.dataset.tab!=='Отделы';});
 }
+function cfoGroupMeta(item){
+ const key=item.type+'|'+String(item.name||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/[\u00a0\u202f]/g,' ').replace(/\s+/g,' ').trim(),g=boot.grouping||{};
+ return (g.overrides||{})[key]||(g.defaults||{})[key]||{activity:'unclassified',group:'Требуют распределения'};
+}
+function cfoGroupCaption(meta){return meta.activity==='investment'?'Инвестиционная деятельность':meta.activity==='financing'?'Финансовая деятельность':meta.group;}
+function cfoEditGroup(item){
+ const mapping=boot.grouping||{},options=(mapping.options||{})[item.type]||[],current=cfoGroupMeta(item),container=document.createElement('select');container.className='input';container.setAttribute('aria-label','Группа статьи '+item.name);
+ const auto=document.createElement('option');auto.value='';auto.textContent='По справочнику';container.appendChild(auto);
+ options.forEach(o=>{const opt=document.createElement('option');opt.value=JSON.stringify(o);opt.textContent=cfoGroupCaption(o);container.appendChild(opt);});
+ const key=item.type+'|'+String(item.name||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/[\u00a0\u202f]/g,' ').replace(/\s+/g,' ').trim(),override=(mapping.overrides||{})[key];container.value=override?JSON.stringify(override):'';
+ container.onchange=()=>{const choice=container.value?JSON.parse(container.value):{activity:'',group:''};container.disabled=true;call('wlSetArticleGroup',item.type,item.name,choice.activity,choice.group).then(result=>{boot.grouping=result;bddsData=null;bddsFactData=null;renderSummary();}).catch(e=>{showError(e);renderSummary();});};return container;
+}
 function renderSummary(){
  if(!boot)return;
  const deps=summaryDepartment?[summaryDepartment]:boot.user.view;
  const filtered=rows.filter(r=>deps.includes(r.department));
- const all=grouped(filtered),list=all.filter(g=>!summaryText||g.name.toLocaleLowerCase('ru').includes(summaryText));
+ const all=grouped(filtered.filter(r=>String(r.category||'').trim()),true),list=all.filter(g=>!summaryText||g.name.toLocaleLowerCase('ru').includes(summaryText));
  const sections=groupedSections(list),monthly=summaryMode==='monthly';
  $('cfoFold').textContent=cfoCollapsed?'Развернуть статьи':'Свернуть статьи';$('cfoFoldDepartments').textContent=cfoDepartmentsCollapsed?'+ Отделы':'− Отделы';$('cfoFoldDepartments').disabled=summaryMode!=='monthly';
  $('summaryMonthly').classList.toggle('active',monthly);$('summaryDaily').classList.toggle('active',!monthly);
@@ -962,7 +974,7 @@ function renderSummary(){
  const body=$('summaryBody');body.innerHTML='';
  function addGroupRow(group,title,kind){
   const tr=document.createElement('tr');tr.className=kind||'';
-  const label=document.createElement('td');label.className='catcol';label.textContent=title;tr.appendChild(label);
+  const label=document.createElement('td');label.className='catcol';label.textContent=title;if(!kind&&group.length===1&&boot.user.admin){label.appendChild(document.createElement('br'));label.appendChild(cfoEditGroup(group[0]));}tr.appendChild(label);
   if(showDepartments){deps.forEach(d=>{const td=document.createElement('td');td.className='num';const val=group.reduce((s,x)=>s+(x.byDept[d]||0),0);td.textContent=money(val);tr.appendChild(td);});}
   else if(!monthly){for(let d=1;d<=days;d++){const td=document.createElement('td');td.className='num';const val=group.reduce((s,x)=>s+(x.byDay[d]||0),0);td.textContent=val?fmt.format(val):'—';tr.appendChild(td);}}
   const total=document.createElement('td');total.className='num rightmost';total.textContent=money(group.reduce((s,x)=>s+x.total,0));tr.appendChild(total);body.appendChild(tr);
@@ -975,7 +987,8 @@ function renderSummary(){
   const label=document.createElement('td');label.className='catcol';label.textContent=section.title;
   const fill=document.createElement('td');fill.className='section-fill';fill.colSpan=cols+1;
   band.append(label,fill);body.appendChild(band);
-  if(!cfoCollapsed)section.items.forEach(item=>addGroupRow([item],item.name,''));
+  const groups=new Map();section.items.forEach(item=>{const name=cfoGroupCaption(cfoGroupMeta(item));if(!groups.has(name))groups.set(name,[]);groups.get(name).push(item);});
+  for(const [name,items] of groups){addGroupRow(items,name,'sum-subtotal');if(!cfoCollapsed)items.forEach(item=>addGroupRow([item],item.name,''));}
   addGroupRow(section.items,section.sumTitle,'sum-subtotal');
  }
  $('summaryTotal').textContent='Поступления: '+money(sections[0].total)+' · Списания: '+money(sections[1].total);

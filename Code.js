@@ -386,7 +386,7 @@ function wlBoot(){
   console.log('WL_PERF boot '+(Date.now()-start)+'ms');
   const nowKey=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyy-MM');
   const current=active.some(m=>m.key===nowKey)?nowKey:(active.filter(m=>m.key<=nowKey).slice(-1)[0]||active[0]).key;
-  return {user,dict,months:active.map(m=>({key:m.key,status:m.status})),current};
+  return {user,dict,months:active.map(m=>({key:m.key,status:m.status})),current,grouping:wlBddsGrouping_(ss)};
 }
 function wlGetMonth(key){
   const start=Date.now();
@@ -1019,9 +1019,25 @@ const WL_BDDS_GROUP = {"income|продажа товара lamoda":"Поступ
 const WL_BDDS_ORDER={operating:{income:['Поступления от МП','Прочие поступления'],expense:['Расходы на персонал','Реклама и маркетинг','Логистика и склад','Закупка товара','Запуски','Административные расходы','Америка','Налоги','Сервисы, ПО и разработка','Комиссии и проценты','Прочие']}};
 function wlBddsNormalize_(value){return String(value||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/[\u00a0\u202f]/g,' ').replace(/\s+/g,' ').trim();}
 const WL_BDDS_NORM_CLASS=Object.keys(WL_BDDS_CLASSIFICATION).reduce((o,k)=>{o[wlBddsNormalize_(k)]=WL_BDDS_CLASSIFICATION[k];return o;},{});
-function wlBddsMeta_(type,category){
- const key=type+'|'+wlBddsNormalize_(category),activity=WL_BDDS_NORM_CLASS[key]||'unclassified';
- return {activity,group:WL_BDDS_GROUP[key]||(activity==='operating'?(type==='income'?'Прочие поступления':'Прочие'):(type==='income'?'Поступления':'Списания'))};
+function wlBddsGroupOptions_(type){
+ const options=(WL_BDDS_ORDER.operating[type]||[]).map(group=>({activity:'operating',group}));
+ for(const activity of ['investment','financing'])options.push({activity,group:type==='income'?'Поступления':'Списания'});
+ return options;
+}
+function wlBddsGrouping_(ss){
+ const defaults={};Object.keys(WL_BDDS_NORM_CLASS).forEach(k=>{const type=k.split('|')[0],activity=WL_BDDS_NORM_CLASS[k];defaults[k]={activity,group:WL_BDDS_GROUP[k]||(activity==='operating'?(type==='income'?'Прочие поступления':'Прочие'):(type==='income'?'Поступления':'Списания'))};});
+ const sh=ss.getSheetByName('WL_Группы_статей'),overrides={};
+ if(sh&&sh.getLastRow()>1)sh.getRange(2,1,sh.getLastRow()-1,4).getValues().forEach(r=>{const type=String(r[0]),key=type+'|'+wlBddsNormalize_(r[1]),activity=String(r[2]),group=String(r[3]);if(wlBddsGroupOptions_(type).some(x=>x.activity===activity&&x.group===group))overrides[key]={activity,group};});
+ return {defaults,overrides,options:{income:wlBddsGroupOptions_('income'),expense:wlBddsGroupOptions_('expense')}};
+}
+function wlBddsMeta_(type,category,grouping){
+ const key=type+'|'+wlBddsNormalize_(category);return (grouping&&grouping.overrides[key])||(grouping&&grouping.defaults[key])||{activity:'unclassified',group:'Требуют распределения'};
+}
+function wlSetArticleGroup(type,category,activity,group){
+ type=String(type||'');category=String(category||'').trim();activity=String(activity||'');group=String(group||'');
+ if(!['income','expense'].includes(type)||!category||category.length>250)throw Error('Некорректная статья');
+ if((activity||group)&&!wlBddsGroupOptions_(type).some(x=>x.activity===activity&&x.group===group))throw Error('Выберите группу из списка');
+ return wlLock_(()=>{const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'ЦФО',false);const sh=wlNewSheet_(ss,'WL_Группы_статей',['Тип','Статья','Деятельность','Группа','Изменено','Кто изменил']);const rows=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,4).getValues():[];const key=wlBddsNormalize_(category);const i=rows.findIndex(r=>String(r[0])===type&&wlBddsNormalize_(r[1])===key);if(!activity&&!group){if(i>=0)sh.deleteRow(i+2);}else sh.getRange(i<0?sh.getLastRow()+1:i+2,1,1,6).setValues([[type,category,activity,group,new Date(),user.email]]);return wlBddsGrouping_(ss);});
 }
 function wlBddsComments_(ss,year){
  const sh=ss.getSheetByName('WL_БДДС_Комментарии'),all={};if(!sh||sh.getLastRow()<2)return all;
@@ -1038,14 +1054,14 @@ function wlGetBddsPlan(year){
  if(!active.length)return {year,months:[],articles:[],unmapped:[],comments:{},sectionOrder:WL_BDDS_ORDER};
  const allowed=new Set(active.map(m=>m.key)),departments=new Set(u.view),dict=wlDictionaries_(ss);
  const incomes=new Set(dict.incomeCategories.map(wlBddsNormalize_)),expenses=new Set(dict.categories.map(wlBddsNormalize_));
- const items=new Map(),unmapped=new Set(), populatedMonths=new Set();
+ const grouping=wlBddsGrouping_(ss),items=new Map(),unmapped=new Set(), populatedMonths=new Set();
  for(const entry of wlOpsRead_(wlOps_(ss))){
   if(!allowed.has(entry.key)||!departments.has(entry.row.department))continue;
   const row=entry.row,category=String(row.category||'').trim();
   if((!row.templateRoot && !String(row.id||'').startsWith('copy-')) || Object.keys(row.amounts||{}).length || Object.keys(row.notes||{}).length || Object.keys(row.formulas||{}).length) populatedMonths.add(entry.key);
   if(!category)continue;
   const normalized=wlBddsNormalize_(category),type=row.cashFlowType==='income'?'income':row.cashFlowType==='expense'?'expense':incomes.has(normalized)&&!expenses.has(normalized)?'income':'expense';
-  const id=type+'|'+normalized,meta=wlBddsMeta_(type,category);
+  const id=type+'|'+normalized,meta=wlBddsMeta_(type,category,grouping);
   const item=items.get(id)||{id,category,type,activity:meta.activity,group:meta.group,byMonth:{}};
   for(const value of Object.values(row.amounts||{})){
    const amount=Number(value);if(Number.isFinite(amount))item.byMonth[entry.key]=(item.byMonth[entry.key]||0)+amount;
@@ -1114,7 +1130,7 @@ function wlBddsFetchFact(year){
  }
  if(!complete)throw Error('Достигнут лимит страниц ФинТабло. Частичный факт не отображается');
  const parentIds=new Set(rows.map(r=>String(r.parentId||'')).filter(Boolean));
- const articles=new Map(),warnings={ignoredPlan:0,ignoredUnknown:0,ignoredTransfer:0,uncategorized:0,ignoredCurrency:0};
+ const grouping=wlBddsGrouping_(ss),articles=new Map(),warnings={ignoredPlan:0,ignoredUnknown:0,ignoredTransfer:0,uncategorized:0,ignoredCurrency:0};
  for(const r of rows){
   if(parentIds.has(String(r.id)))continue;
   if(r.isPlan===true||r.isPlanned===true){warnings.ignoredPlan++;continue;}
@@ -1126,7 +1142,7 @@ function wlBddsFetchFact(year){
   let category=String((r.category&&typeof r.category==='object'?(r.category.name||r.category.title):'')||'').trim();
   const catId=String(r.categoryId||r.category_id||(typeof r.category!=='object'?r.category:'')||'');if(!category)category=byId[catId]||'';
   if(!category){warnings.uncategorized++;continue;}
-  const type=group==='income'?'income':'expense',id=type+'|'+wlBddsNormalize_(category),meta=wlBddsMeta_(type,category);
+  const type=group==='income'?'income':'expense',id=type+'|'+wlBddsNormalize_(category),meta=wlBddsMeta_(type,category,grouping);
   const found=articles.get(id)||{id,category,type,activity:meta.activity,group:meta.group,byMonth:{}};
   found.byMonth[month]=(found.byMonth[month]||0)+Math.abs(amount);articles.set(id,found);
  }

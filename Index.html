@@ -193,7 +193,7 @@ header{flex:0 0 auto;position:relative;top:auto}
 </section>
 <section class="panel hidden" id="summaryView"><div class="toolbar"><div class="row"><h2 style="margin:0 9px 0 0;font-size:17px">ЦФО · план по отделам</h2><button class="btn active" id="summaryMonthly">По отделам за месяц</button><button class="btn" id="cfoFoldDepartments">− Отделы</button><button class="btn" id="cfoFold">Свернуть статьи</button><button class="btn" id="summaryDaily">По дням</button><input class="input" id="summarySearch" placeholder="Найти статью ДДС" aria-label="Поиск статьи"><select class="input" id="summaryDept" aria-label="Фильтр по отделу"><option value="">Все доступные отделы</option></select></div><span class="badge hidden" id="summaryTotal" aria-hidden="true"></span></div><div class="sumscroll"><table class="sumtable" id="summaryTable"><thead id="summaryHead"></thead><tbody id="summaryBody"></tbody></table></div></section>
 <section class="panel hidden" id="bddsView" aria-label="Бюджет движения денежных средств">
- <div class="toolbar"><div class="row"><h2 style="margin:0;font-size:17px">БДДС · план и факт</h2><select class="input" id="bddsYearSelect" aria-label="Год для БДДС"></select><button class="btn" id="bddsRefresh">Обновить отчёт</button><button class="btn" id="bddsFold">Свернуть статьи</button><button class="btn" id="bddsFoldMonths">Развернуть месяцы</button><button class="btn primary admin-only hidden" id="bddsFetchFact" title="Только чтение данных из ФинТабло">Получить факт из ФинТабло</button></div><span class="status" id="bddsStatus">План из бюджетов отделов. Факт поступит из ФинТабло.</span></div>
+ <div class="toolbar"><div class="row"><h2 style="margin:0;font-size:17px">БДДС · план и факт</h2><select class="input" id="bddsYearSelect" aria-label="Год для БДДС"></select><button class="btn" id="bddsRefresh">Обновить отчёт</button><button class="btn" id="bddsFold">Свернуть статьи</button><button class="btn" id="bddsFoldMonths">Развернуть месяцы</button><button class="btn admin-only hidden" id="bddsHistory2026">История БДДС 2026</button><button class="btn primary admin-only hidden" id="bddsFetchFact" title="Только чтение данных из ФинТабло">Получить факт из ФинТабло</button></div><span class="status" id="bddsStatus">План из бюджетов отделов. Факт поступит из ФинТабло.</span></div>
  <div class="sumscroll"><table class="sumtable bdds-table" id="bddsTable"><thead id="bddsHead"></thead><tbody id="bddsBody"></tbody></table></div>
  <p class="subtle bdds-footnote">Факт и отклонения станут доступны после подключения чтения фактических операций из ФинТабло. Нажмите на месяц, чтобы раскрыть План/Факт/Отклонение. Нераспознанные статьи остаются отдельно для проверки, чтобы суммы не потерялись.</p>
 </section>
@@ -298,7 +298,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const genId=()=>typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'row-'+Date.now()+'-'+Math.random().toString(36).slice(2);
 function call(name,...args){return new Promise((resolve,reject)=>{if(!window.google||!google.script||!google.script.run){reject(new Error('Для работы с сервером откройте опубликованное приложение Apps Script'));return;}google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args);});}
 let selectedRowIds=new Set(), selectedTrashEntries=new Set(), importPrepared=null, importFileName='', summaryText='', summaryDepartment='';
-let cfoCollapsed=false,cfoDepartmentsCollapsed=false,bddsCollapsed=false,bddsData=null,bddsYear='',bddsFactData=null,bddsExpandedMonths=new Set(),bddsCommentTarget=null;
+let cfoCollapsed=false,cfoDepartmentsCollapsed=false,bddsCollapsed=false,bddsData=null,bddsYear='',bddsFactData=null,bddsExpandedMonths=new Set(),bddsCommentTarget=null,bddsHistoryMode=false,bddsHistoryData=null;
 /* Единый шаблон генерируется тем же кодом, что выгрузка отдела. */
 let noteTarget=null;
 let boot=null,months=[],monthKey='2026-11',rows=[],dict={departments:[],payments:[],sources:[],categories:[]},dept='',activeTab='Отделы',summaryMode='monthly',deptMode='expenses';
@@ -851,10 +851,11 @@ function wire(){
  $('cfoFold').onclick=()=>{cfoCollapsed=!cfoCollapsed;renderSummary();};$('cfoFoldDepartments').onclick=()=>{cfoDepartmentsCollapsed=!cfoDepartmentsCollapsed;renderSummary();};$('bddsFold').onclick=()=>{bddsCollapsed=!bddsCollapsed;renderBddsView();};$('bddsRefresh').onclick=()=>{bddsData=null;renderBdds(true);};$('bddsYearSelect').onchange=()=>{bddsYear=$('bddsYearSelect').value;bddsExpandedMonths=new Set(monthKey.startsWith(bddsYear)?[monthKey]:[]);renderBdds();};
  $('bddsFoldMonths').onclick=()=>{const d=[...document.querySelectorAll('#bddsHead [data-expand-month]')].map(x=>x.dataset.expandMonth);bddsExpandedMonths=d.length&&d.every(m=>bddsExpandedMonths.has(m))?new Set():new Set(d);renderBddsView();};
  $('bddsFetchFact').onclick=bddsLoadFact;
+ $('bddsHistory2026').onclick=()=>{if(bddsHistoryMode){bddsHistoryMode=false;bddsHistoryControls();renderBdds(true);return;}bddsHistoryMode=true;bddsHistoryControls();$('bddsStatus').textContent='Загружаем исходный БДДС 2026…';call('wlBddsHistorical2026').then(data=>{bddsHistoryData=data;if(bddsHistoryMode)renderBddsHistory();}).catch(e=>{$('bddsStatus').textContent='Не удалось открыть исторический БДДС: '+(e.message||e);});};
  $('bddsCommentSave').onclick=bddsSaveComment;$('bddsCommentCancel').onclick=bddsCloseComment;
  $('bddsCommentOverlay').onclick=e=>{if(e.target===$('bddsCommentOverlay'))bddsCloseComment();};
  $('bddsCommentText').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();bddsSaveComment();}};
- $('bddsHead').onclick=e=>{const el=e.target.closest('[data-expand-month]');if(!el)return;const m=el.dataset.expandMonth;if(bddsExpandedMonths.has(m))bddsExpandedMonths.delete(m);else bddsExpandedMonths.add(m);renderBddsView();};
+ $('bddsHead').onclick=e=>{const el=e.target.closest('[data-expand-month]');if(!el)return;const m=el.dataset.expandMonth;if(bddsExpandedMonths.has(m))bddsExpandedMonths.delete(m);else bddsExpandedMonths.add(m);if(bddsHistoryMode)renderBddsHistory();else renderBddsView();};
  $('bddsBody').onclick=e=>{const fund=e.target.closest('[data-fund-field]');if(fund){bddsEditFund(fund.dataset.fundMonth,fund.dataset.fundField);return;}const el=e.target.closest('[data-comment-key]');if(el)bddsOpenComment(el.dataset.commentMonth,decodeURIComponent(el.dataset.commentKey));};$('summaryMonthly').onclick=()=>{summaryMode='monthly';renderSummary();};$('summaryDaily').onclick=()=>{summaryMode='daily';renderSummary();};
  $('catSearch').oninput=renderCategoryOptions;document.addEventListener('click',e=>{if(catTarget&&!$('catPanel').contains(e.target)&&!catTarget.button.contains(e.target))closeCategory();});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCategory();});
  $('addMonthBtn').onclick=()=>{const value=prompt('Введите новый месяц в формате ГГГГ-ММ (например, 2028-01):');if(value&&/^\d{4}-(0[1-9]|1[0-2])$/.test(value))manageMonth('add',value);else if(value)alert('Неверный формат. Пример: 2028-01');};
@@ -980,23 +981,24 @@ function renderSummary(){
   else if(!monthly){for(let d=1;d<=days;d++){const td=document.createElement('td');td.className='num';const val=group.reduce((s,x)=>s+(x.byDay[d]||0),0);td.textContent=val?fmt.format(val):'—';tr.appendChild(td);}}
   const total=document.createElement('td');total.className='num rightmost';total.textContent=money(group.reduce((s,x)=>s+x.total,0));tr.appendChild(total);body.appendChild(tr);
  }
- for(const section of sections){
-  if(!section.items.length)continue;
+ const cfoActivities=[['operating','ОПЕРАЦИОННАЯ ДЕЯТЕЛЬНОСТЬ','операционной'],['investment','ИНВЕСТИЦИОННАЯ ДЕЯТЕЛЬНОСТЬ','инвестиционной'],['financing','ФИНАНСОВАЯ ДЕЯТЕЛЬНОСТЬ','финансовой'],['unclassified','СТАТЬИ, ТРЕБУЮЩИЕ УТОЧНЕНИЯ','неопределённой']];
+ for(const [activity,title,caption] of cfoActivities){
+  const activityItems=list.filter(item=>cfoGroupMeta(item).activity===activity);if(!activityItems.length&&activity==='unclassified')continue;
   const band=document.createElement('tr');band.className='sum-section';
   // Keep the section title fixed in the same left column as article names.
   // A single colspan cell slides horizontally and misaligns the labels.
-  const label=document.createElement('td');label.className='catcol';label.textContent=section.title;
+  const label=document.createElement('td');label.className='catcol';label.textContent=title;
   const fill=document.createElement('td');fill.className='section-fill';fill.colSpan=cols+1;
   band.append(label,fill);body.appendChild(band);
-  const groups=new Map();section.items.forEach(item=>{const name=cfoGroupCaption(cfoGroupMeta(item));if(!groups.has(name))groups.set(name,[]);groups.get(name).push(item);});
-  for(const [name,items] of groups){addGroupRow(items,name,'sum-subtotal');if(!cfoCollapsed)items.forEach(item=>addGroupRow([item],item.name,''));}
-  addGroupRow(section.items,section.sumTitle,'sum-subtotal');
+  for(const [type,typeTitle] of [['income','Поступления'],['expense','Списания']]){const typed=activityItems.filter(item=>item.type===type);if(!typed.length)continue;addGroupRow(typed,typeTitle,'sum-subtotal');const groups=new Map();typed.forEach(item=>{const name=cfoGroupMeta(item).group;if(!groups.has(name))groups.set(name,[]);groups.get(name).push(item);});for(const [name,items] of groups){addGroupRow(items,name,'sum-subtotal');if(!cfoCollapsed)items.forEach(item=>addGroupRow([item],item.name,''));}}
+  const signed=activityItems.map(item=>{const sign=item.type==='income'?1:-1;return {...item,total:item.total*sign,byDept:Object.fromEntries(Object.entries(item.byDept).map(([k,v])=>[k,v*sign])),byDay:Object.fromEntries(Object.entries(item.byDay).map(([k,v])=>[k,v*sign]))};});addGroupRow(signed,'Сальдо по '+caption+' деятельности','sum-subtotal');
  }
  $('summaryTotal').textContent='Поступления: '+money(sections[0].total)+' · Списания: '+money(sections[1].total);
 }
 
 function renderBdds(force){
  if(!boot||!boot.user.tabs.includes('БДДС'))return;
+ if(bddsHistoryMode){if(bddsHistoryData)renderBddsHistory();return;}
  const years=[...new Set(months.map(m=>m.key.slice(0,4)))].sort();
  const select=$('bddsYearSelect');if(!bddsYear||!years.includes(bddsYear))bddsYear=years.includes(monthKey.slice(0,4))?monthKey.slice(0,4):years[0]||'';
  select.innerHTML=years.map(y=>'<option value="'+y+'">'+y+'</option>').join('');select.value=bddsYear;
@@ -1005,7 +1007,10 @@ function renderBdds(force){
  const year=bddsYear;$('bddsStatus').textContent='Загружаем '+year+' год…';
  call('wlGetBddsPlan',year).then(res=>{if(bddsYear!==year)return;bddsData=res;renderBddsView();}).catch(e=>{$('bddsStatus').textContent='Ошибка: '+(e.message||e);});
 }
+function bddsHistoryControls(){['bddsYearSelect','bddsRefresh','bddsFold','bddsFoldMonths','bddsFetchFact'].forEach(id=>$(id).classList.toggle('hidden',bddsHistoryMode));$('bddsHistory2026').textContent=bddsHistoryMode?'Вернуться к бюджету':'История БДДС 2026';}
+function renderBddsHistory(){const data=bddsHistoryData;if(!data)return;const expanded=bddsExpandedMonths;$('bddsHead').innerHTML='<tr><th class="catcol" rowspan="2">Показатель</th>'+data.months.map(m=>'<th class="bdds-month-head" colspan="'+(expanded.has(m)?5:1)+'"><button class="bdds-month-toggle" data-expand-month="'+m+'">'+(expanded.has(m)?'− ':'+ ')+monthsRu[Number(m.slice(5))-1]+'</button></th>').join('')+'</tr><tr>'+data.months.map(m=>expanded.has(m)?'<th>План</th><th>Факт</th><th>Откл.</th><th>%</th><th>Комментарий</th>':'<th>План</th>').join('')+'</tr>';$('bddsBody').innerHTML=data.rows.map(row=>'<tr><td class="catcol">'+esc(row.label)+'</td>'+row.cells.map((cells,i)=>'<td class="num bdds-month-start">'+esc(cells[0]||'—')+'</td>'+(expanded.has(data.months[i])?cells.slice(1).map((v,j)=>'<td class="'+(j===3?'bdds-comment-cell':'num')+'">'+esc(v||'—')+'</td>').join(''):'')).join('')+'</tr>').join('');$('bddsStatus').textContent='Исторический БДДС 2026 · только просмотр · данные из исходного файла';}
 function bddsDscr(items,month,field){const val=r=>Number((r[field]||{})[month])||0,operating=items.filter(r=>r.activity==='operating').reduce((sum,r)=>sum+(r.type==='income'?1:-1)*val(r),0),debt=items.filter(r=>r.type==='expense'&&['выплата тела кредита','проценты по кредиту'].includes(String(r.category||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim())).reduce((sum,r)=>sum+val(r),0);return debt?operating/debt:null;}
+function bddsFundEnd(funds,month,net){const values=funds[month]||{};return values.end!=null?{value:values.end,automatic:false}:values.begin!=null?{value:values.begin+(Number(net[month])||0),automatic:true}:{value:null,automatic:false};}
 function bddsEditFund(month,field){if(!boot.user.admin)return;const old=((bddsData.funds||{})[month]||{})[field],value=prompt('Фонды '+(field==='begin'?'на начало':'на конец')+' периода, '+monthLabel(month)+'. Очистите поле, чтобы удалить сумму.',old==null?'':String(old));if(value===null)return;const text=value.replace(/[\s\u00a0]/g,'').replace(',','.');if(text&&!/^-?\d+(?:\.\d+)?$/.test(text)){alert('Введите сумму числом');return;}call('wlBddsSetFund',month,field,text===''?null:Number(text)).then(funds=>{bddsData.funds=funds;renderBddsView();}).catch(showError);}
 function renderBddsView(){
  if(!bddsData||bddsYear!==bddsData.year)return;
@@ -1030,8 +1035,9 @@ function renderBddsView(){
  const result=[],allInc=[],allOut=[],factInc=[],factOut=[];
  const activities={operating:'ОПЕРАЦИОННАЯ ДЕЯТЕЛЬНОСТЬ',investment:'ИНВЕСТИЦИОННАЯ ДЕЯТЕЛЬНОСТЬ',financing:'ФИНАНСОВАЯ ДЕЯТЕЛЬНОСТЬ',unclassified:'СТАТЬИ, ТРЕБУЮЩИЕ УТОЧНЕНИЯ'};
  for(const activity of Object.keys(activities)){
-  const section=items.filter(r=>r.activity===activity);if(!section.length)continue;
-  result.push(renderRow(activities[activity],aggregate(section,'byMonth'),aggregate(section,'factByMonth'),'bdds-section'+(activity==='unclassified'?' bdds-unmapped':''),null));
+  const section=items.filter(r=>r.activity===activity);if(!section.length&&activity==='unclassified')continue;
+  const activityNet=field=>Object.fromEntries(dates.map(m=>[m,section.reduce((total,r)=>total+(r.type==='income'?1:-1)*(Number((r[field]||{})[m])||0),0)]));
+  result.push(renderRow(activities[activity],activityNet('byMonth'),activityNet('factByMonth'),'bdds-section'+(activity==='unclassified'?' bdds-unmapped':''),null));
   for(const [type,caption] of [['income','Поступления'],['expense','Списания']]){
    const rows=section.filter(r=>r.type===type);if(!rows.length)continue;
    const p=aggregate(rows,'byMonth'),f=aggregate(rows,'factByMonth');result.push(renderRow(caption,p,f,'bdds-subtotal',null));
@@ -1048,9 +1054,9 @@ function renderBddsView(){
   result.push(renderRow('Сальдо по '+(activity==='operating'?'операционной':activity==='financing'?'финансовой':activity==='investment'?'инвестиционной':'неопределённой')+' деятельности',subtract('byMonth'),subtract('factByMonth'),'bdds-net',null));
  }
  const net=(a,b)=>Object.fromEntries(dates.map(m=>[m,a.reduce((v,r)=>v+(r[m]||0),0)-b.reduce((v,r)=>v+(r[m]||0),0)]));
- result.push(renderRow('ЧИСТЫЙ ДЕНЕЖНЫЙ ПОТОК',net(allInc,allOut),net(factInc,factOut),'bdds-net',null));
- for(const [field,label] of [['begin','Фонды на начало периода'],['end','Фонды на конец периода']]){let cells='';for(const m of dates){const value=((bddsData.funds||{})[m]||{})[field],display=value==null?'Добавить':money(value);cells+='<td class="num bdds-month-start">'+(boot.user.admin?'<button type="button" class="btn small" data-fund-month="'+m+'" data-fund-field="'+field+'">'+display+'</button>':(value==null?'—':display))+'</td>'+(bddsExpandedMonths.has(m)?'<td colspan="4"></td>':'<td></td>');}result.push('<tr class="bdds-group"><td class="catcol">'+label+'</td>'+cells+'</tr>');}
- let dscrCells='';for(const m of dates){const p=bddsDscr(items,m,'byMonth'),f=hasFact?bddsDscr(items,m,'factByMonth'):null,ratio=x=>x==null?'—':money(x);dscrCells+='<td class="num bdds-month-start">'+ratio(p)+'</td>'+(bddsExpandedMonths.has(m)?'<td class="num">'+ratio(f)+'</td><td class="num">'+(p==null||f==null?'—':ratio(f-p))+'</td><td class="num">'+(p==null||f==null||!p?'—':money(100*(f-p)/Math.abs(p))+'%')+'</td><td></td>':'<td></td>');}
+ const netPlan=net(allInc,allOut);result.push(renderRow('ЧИСТЫЙ ДЕНЕЖНЫЙ ПОТОК',netPlan,net(factInc,factOut),'bdds-net',null));
+ for(const [field,label] of [['begin','Фонды на начало периода'],['end','Фонды на конец периода']]){let cells='';for(const m of dates){const state=field==='end'?bddsFundEnd(bddsData.funds||{},m,netPlan):{value:((bddsData.funds||{})[m]||{})[field],automatic:false},value=state.value,display=value==null?'Добавить':money(value),hint=state.automatic?'Расчёт: начало периода + чистый денежный поток. Нажмите для ручной корректировки.':'Нажмите для ввода или очистки суммы';cells+='<td class="num bdds-month-start">'+(boot.user.admin?'<button type="button" class="btn small" '+(state.automatic?'style="color:#8b95a5" ':'')+'title="'+hint+'" data-fund-month="'+m+'" data-fund-field="'+field+'">'+display+'</button>':(value==null?'—':display))+'</td>'+(bddsExpandedMonths.has(m)?'<td colspan="4"></td>':'<td></td>');}result.push('<tr class="bdds-group"><td class="catcol">'+label+'</td>'+cells+'</tr>');}
+ let dscrCells='';for(const m of dates){const p=bddsDscr(items,m,'byMonth'),f=hasFact?bddsDscr(items,m,'factByMonth'):null,ratio=x=>x==null?'<span title="Нет суммы по статьям «Выплата тела кредита» и «Проценты по кредиту» за месяц">Нет выплат</span>':money(x);dscrCells+='<td class="num bdds-month-start">'+ratio(p)+'</td>'+(bddsExpandedMonths.has(m)?'<td class="num">'+(hasFact?ratio(f):'—')+'</td><td class="num">'+(p==null||f==null?'—':ratio(f-p))+'</td><td class="num">'+(p==null||f==null||!p?'—':money(100*(f-p)/Math.abs(p))+'%')+'</td><td></td>':'<td></td>');}
  result.push('<tr class="bdds-net"><td class="catcol" title="Сальдо операционной деятельности / (выплата тела кредита + проценты по кредиту). 1,2 — ориентир, которого требуют банки; меньше 1 — денег не хватает для обслуживания долга.">DSCR (месячный) ⓘ</td>'+dscrCells+'</tr>');
  $('bddsBody').innerHTML=result.join('');$('bddsFold').textContent=bddsCollapsed?'Развернуть статьи':'Свернуть статьи';
  $('bddsFoldMonths').textContent=dates.length&&dates.every(m=>bddsExpandedMonths.has(m))?'Свернуть месяцы':'Развернуть месяцы';

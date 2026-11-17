@@ -1064,6 +1064,17 @@ function wlBddsSetFund(month,field,value){
   const target=sh.getRange(line,field==='begin'?2:3);if(value===null)target.clearContent();else target.setValue(value);
   sh.getRange(line,4,1,2).setValues([[new Date(),u.email]]);return wlBddsFunds_(ss,month.slice(0,4));});
 }
+/** Read the separately maintained 2026 report without changing either spreadsheet. */
+function wlBddsHistorical2026(){
+ const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'БДДС',false);
+ const source=SpreadsheetApp.openById('1aVg5VqQkp1WSIeHYuK-SVrR5DRw22JqDy0qGhbN9Xkg'),sh=source.getSheetByName('БДДС');if(!sh)throw Error('В исходном файле не найден лист БДДС');
+ const nr=Math.min(sh.getLastRow(),1000),nc=Math.min(sh.getLastColumn(),300);if(nr<2||nc<6)throw Error('В исходном БДДС не найдены данные');
+ const range=sh.getRange(1,1,nr,nc),values=range.getValues(),shown=range.getDisplayValues(),zone=source.getSpreadsheetTimeZone()||Session.getScriptTimeZone(),months=[];
+ values[0].forEach((v,i)=>{const key=wlMonthCellKey_(v,zone);if(key&&key.startsWith('2026-')&&i+4<nc)months.push({key,index:i});});
+ if(!months.length)throw Error('Не найдены месяцы 2026 года в первой строке исходного БДДС');
+ const rows=shown.slice(1).filter(row=>String(row[0]||'').trim()).map(row=>({label:String(row[0]),cells:months.map(m=>row.slice(m.index,m.index+5).map(x=>String(x||'')))}));
+ return {months:months.map(m=>m.key),rows};
+}
 function wlGetBddsPlan(year){
  year=String(year||'');if(!/^\d{4}$/.test(year))throw Error('Неверный год');
  const ss=wlStore_(),u=wlUser_(ss);wlRequireTab_(u,'БДДС',false);

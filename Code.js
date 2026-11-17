@@ -1049,6 +1049,21 @@ function wlBddsComments_(ss,year){
   try{let messages=JSON.parse(String(row[3])||'[]');if(Array.isArray(messages)){const key=month+'|'+row[2];all[key]=(all[key]||[]).concat(messages);}}catch(_){ }
  });Object.keys(all).forEach(key=>{all[key].sort((a,b)=>String(a.at||'').localeCompare(String(b.at||'')));all[key]=all[key].slice(-30);});return all;
 }
+function wlBddsFunds_(ss,year){
+ const result={},sh=ss.getSheetByName('WL_БДДС_Фонды');if(!sh||sh.getLastRow()<2)return result;
+ const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone();
+ sh.getRange(2,1,sh.getLastRow()-1,3).getValues().forEach(r=>{const m=wlMonthCellKey_(r[0],zone);if(!m||!m.startsWith(year+'-'))return;result[m]={begin:r[1]===''?null:Number(r[1]),end:r[2]===''?null:Number(r[2])};});return result;
+}
+function wlBddsSetFund(month,field,value){
+ month=wlKey_(month);if(!['begin','end'].includes(field))throw Error('Неизвестный показатель');
+ if(value!==null&&(typeof value!=='number'||!Number.isFinite(value)))throw Error('Введите корректную сумму');
+ return wlLock_(()=>{const ss=wlStore_(),u=wlAdmin_(ss);wlRequireTab_(u,'БДДС',false);wlFindMonth_(ss,month,false);
+  const sh=wlNewSheet_(ss,'WL_БДДС_Фонды',['Месяц','На начало периода','На конец периода','Изменено','Кто изменил']);
+  const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone(),old=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,1).getValues():[],idx=old.findIndex(r=>wlMonthCellKey_(r[0],zone)===month),line=idx<0?sh.getLastRow()+1:idx+2;
+  if(idx<0){if(value===null)return wlBddsFunds_(ss,month.slice(0,4));sh.getRange(line,1).setValue(month);}
+  const target=sh.getRange(line,field==='begin'?2:3);if(value===null)target.clearContent();else target.setValue(value);
+  sh.getRange(line,4,1,2).setValues([[new Date(),u.email]]);return wlBddsFunds_(ss,month.slice(0,4));});
+}
 function wlGetBddsPlan(year){
  year=String(year||'');if(!/^\d{4}$/.test(year))throw Error('Неверный год');
  const ss=wlStore_(),u=wlUser_(ss);wlRequireTab_(u,'БДДС',false);
@@ -1074,7 +1089,7 @@ function wlGetBddsPlan(year){
  }
  const comments=u.admin?wlBddsComments_(ss,year):{};
  Object.keys(comments).forEach(k=>{const m=k.slice(0,7);if(allowed.has(m))populatedMonths.add(m);});
- return {year,months:[...populatedMonths].sort(),articles:[...items.values()].sort((a,b)=>a.category.localeCompare(b.category,'ru')),unmapped:[...unmapped],comments,sectionOrder:WL_BDDS_ORDER};
+ return {year,months:[...populatedMonths].sort(),articles:[...items.values()].sort((a,b)=>a.category.localeCompare(b.category,'ru')),unmapped:[...unmapped],comments,funds:u.admin?wlBddsFunds_(ss,year):{},sectionOrder:WL_BDDS_ORDER};
 }
 function wlBddsPostComment(year,month,key,text){
  year=String(year||'');month=wlKey_(month);key=String(key||'').trim();text=String(text||'').trim();

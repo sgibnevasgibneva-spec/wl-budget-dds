@@ -1019,13 +1019,14 @@ const WL_BDDS_GROUP = {"income|продажа товара lamoda":"Поступ
 const WL_BDDS_ORDER={operating:{income:['Поступления от МП','Прочие поступления'],expense:['Расходы на персонал','Реклама и маркетинг','Логистика и склад','Закупка товара','Запуски','Административные расходы','Америка','Налоги','Сервисы, ПО и разработка','Комиссии и проценты','Прочие']}};
 function wlBddsNormalize_(value){return String(value||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/[\u00a0\u202f]/g,' ').replace(/\s+/g,' ').trim();}
 const WL_BDDS_NORM_CLASS=Object.keys(WL_BDDS_CLASSIFICATION).reduce((o,k)=>{o[wlBddsNormalize_(k)]=WL_BDDS_CLASSIFICATION[k];return o;},{});
+const WL_BDDS_NORM_GROUP=Object.keys(WL_BDDS_GROUP).reduce((o,k)=>{o[wlBddsNormalize_(k)]=WL_BDDS_GROUP[k];return o;},{});
 function wlBddsGroupOptions_(type){
  const options=(WL_BDDS_ORDER.operating[type]||[]).map(group=>({activity:'operating',group}));
  for(const activity of ['investment','financing'])options.push({activity,group:type==='income'?'Поступления':'Списания'});
  return options;
 }
 function wlBddsGrouping_(ss){
- const defaults={};Object.keys(WL_BDDS_NORM_CLASS).forEach(k=>{const type=k.split('|')[0],activity=WL_BDDS_NORM_CLASS[k];defaults[k]={activity,group:WL_BDDS_GROUP[k]||(activity==='operating'?(type==='income'?'Прочие поступления':'Прочие'):(type==='income'?'Поступления':'Списания'))};});
+ const defaults={};Object.keys(WL_BDDS_NORM_CLASS).forEach(k=>{const type=k.split('|')[0],activity=WL_BDDS_NORM_CLASS[k];defaults[k]={activity,group:WL_BDDS_NORM_GROUP[k]||(activity==='operating'?(type==='income'?'Прочие поступления':'Прочие'):(type==='income'?'Поступления':'Списания'))};});
  const sh=ss.getSheetByName('WL_Группы_статей'),overrides={};
  if(sh&&sh.getLastRow()>1)sh.getRange(2,1,sh.getLastRow()-1,4).getValues().forEach(r=>{const type=String(r[0]),key=type+'|'+wlBddsNormalize_(r[1]),activity=String(r[2]),group=String(r[3]);if(wlBddsGroupOptions_(type).some(x=>x.activity===activity&&x.group===group))overrides[key]={activity,group};});
  return {defaults,overrides,options:{income:wlBddsGroupOptions_('income'),expense:wlBddsGroupOptions_('expense')}};

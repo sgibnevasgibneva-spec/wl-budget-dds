@@ -1,6 +1,6 @@
 /**
- * ФинТабло (ТОЛЬКО ЧТЕНИЕ): получаем справочник через официальный API.
- * В этом файле НЕТ POST/PATCH/PUT/DELETE запросов к ФинТабло.
+ * Справочники и факт читаются через официальный API.
+ * Запись разрешена только для плана после отдельной сверки и подтверждения.
  * Только администратор может сохранять API-ключ и применить изменения в НАШЕМ Sheets.
  * Ключ хранится в ScriptProperties; не выводится в интерфейс и не попадает в ZIP.
  */
@@ -122,9 +122,36 @@ function wlFinTabloBudgetPreview(month){
   const id=Number(matches[0].id),entries=remote.filter(r=>Number(r.categoryId)===id&&String(r.date)===date),unknown=entries.some(r=>!Number.isFinite(Number(r.value))||r.value==null||r.value==='');
   if(unknown){result.push({...item,status:'Некорректные данные ФинТабло'});continue;}
   const amount=entries.reduce((s,r)=>s+Number(r.value),0),status=entries.length===0?'Нет плана в ФинТабло':entries.length>1?'Несколько записей — проверить':entries[0].directionId!=null?'Есть направление — проверить':Math.abs(amount-item.amount)<0.005?'Совпадает':'Сумма отличается';
-  result.push({...item,remoteAmount:entries.length?amount:null,remoteCount:entries.length,status});
+  const journalKey="WL_FT_PLAN_PENDING_"+month.replace("-","")+"_"+id,pending=PropertiesService.getScriptProperties().getProperty(journalKey);
+  result.push({...item,categoryId:id,remoteAmount:entries.length?amount:null,remoteCount:entries.length,status:pending?"Не завершена проверка предыдущей отправки":status,action:pending?"blocked":entries.length===0?"create":entries.length===1&&entries[0].directionId==null&&Math.abs(amount-item.amount)<0.005?"skip":"blocked"});
  }
- return {month,rows:result.sort((a,b)=>a.name.localeCompare(b.name,'ru')),warnings,remoteCount:remote.length};
+ const rows=result.sort((a,b)=>a.name.localeCompare(b.name,'ru')),hash=wlFinTabloDigest_({month,rows,warnings,remote});return {month,rows,warnings,remoteCount:remote.length,hash};
+}
+/** Create only missing plan items after a fresh, explicitly approved preview. */
+function wlFinTabloBudgetSend(month,expectedHash){
+ month=wlKey_(month);if(!expectedHash)throw Error('Сначала выполните сверку');
+ return wlLock_(()=>{
+  const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'ФинТабло',false);
+  const preview=wlFinTabloBudgetPreview(month);if(preview.hash!==expectedHash)throw Error('План или данные ФинТабло изменились. Повторите сверку');
+  if(preview.warnings.length||preview.rows.some(r=>r.action==='blocked'||!r.action))throw Error('Есть статьи, требующие проверки. Отправка отменена');
+  const props=PropertiesService.getScriptProperties(),token=props.getProperty(WL_FT_TOKEN_PROP_),date=month.slice(5)+'.'+month.slice(0,4),created=[],skipped=preview.rows.filter(r=>r.action==='skip').length;
+  for(const item of preview.rows.filter(r=>r.action==='create')){
+   const pendingKey='WL_FT_PLAN_PENDING_'+month.replace('-','')+'_'+item.categoryId;
+   if(props.getProperty(pendingKey))throw Error('Предыдущая отправка требует проверки: '+item.name);
+   const url='https://api.fintablo.ru/v1/bdds?date='+encodeURIComponent(date)+'&categoryId='+item.categoryId;
+   const read=UrlFetchApp.fetch(url,{method:'get',muteHttpExceptions:true,followRedirects:false,headers:{Authorization:'Bearer '+token,Accept:'application/json'}});
+   if(read.getResponseCode()!==200)throw Error('Не удалось повторно проверить статью '+item.name+'. Создано ранее: '+created.length);
+   let existing;try{existing=JSON.parse(read.getContentText()).items;}catch(_){throw Error('Некорректный ответ ФинТабло. Создано ранее: '+created.length);}if(!Array.isArray(existing)||existing.length!==0)throw Error('План по статье уже появился в ФинТабло: '+item.name+'. Создано ранее: '+created.length);
+   const comment='WL_BDDS:'+month+':'+item.categoryId,payload={categoryId:item.categoryId,date,value:item.amount,comment};
+   props.setProperty(pendingKey,JSON.stringify({month,id:item.categoryId,amount:item.amount,comment,by:user.email,at:new Date().toISOString()}));
+   let response;try{response=UrlFetchApp.fetch('https://api.fintablo.ru/v1/bdds',{method:'post',contentType:'application/json',payload:JSON.stringify(payload),muteHttpExceptions:true,followRedirects:false,headers:{Authorization:'Bearer '+token,Accept:'application/json'}});}catch(_){throw Error('Ответ об отправке «'+item.name+'» не получен. Повтор заблокирован до проверки в ФинТабло. Ранее создано: '+created.length);}
+   if(response.getResponseCode()!==200)throw Error('ФинТабло не подтвердил «'+item.name+'» (HTTP '+response.getResponseCode()+'). Повтор заблокирован до проверки. Ранее создано: '+created.length);
+   let confirmation;try{confirmation=JSON.parse(response.getContentText()).items;}catch(_){throw Error('Ответ по «'+item.name+'» не распознан. Повтор заблокирован до проверки.');}
+   if(!Array.isArray(confirmation)||confirmation.length!==1||Number(confirmation[0].categoryId)!==item.categoryId||String(confirmation[0].date)!==date||String(confirmation[0].comment)!==comment||!Number.isFinite(Number(confirmation[0].value))||Math.abs(Number(confirmation[0].value)-item.amount)>=0.005||!confirmation[0].id)throw Error('Запись «'+item.name+'» требует проверки в ФинТабло; повтор заблокирован.');
+   props.deleteProperty(pendingKey);created.push(item.name);
+  }
+  return {created:created.length,skipped,month};
+ });
 }
 function wlFinTabloLocal_(ss){const d=wlDictionaries_(ss);return {expenses:d.categories.slice().sort(),incomes:d.incomeCategories.slice().sort()};}
 function wlFinTabloPreview(){

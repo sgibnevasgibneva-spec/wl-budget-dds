@@ -1189,6 +1189,7 @@ function wlBddsDeleteComment(year,month,key,expected){
 function wlBddsFetchFact(year,requestedMonth){
  year=String(year||'');if(!/^\d{4}$/.test(year))throw Error('Неверный год');
  requestedMonth=wlKey_(String(requestedMonth||''));if(!requestedMonth.startsWith(year+'-'))throw Error('Выберите месяц выбранного года');
+ const currentMonth=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyy-MM');if(requestedMonth>=currentMonth)throw Error('Месяц ещё не завершился. План-факт доступен после окончания месяца.');
  const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'БДДС',false);
  const token=PropertiesService.getScriptProperties().getProperty('WL_DDS_FINTABLO_API_TOKEN');
  if(!token)throw Error('Сначала сохраните ключ ФинТабло');

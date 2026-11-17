@@ -218,8 +218,8 @@ header{flex:0 0 auto;position:relative;top:auto}
 <div class="settings-card admin-only hidden" style="margin-top:16px;max-width:960px">
 <h3>План БДДС · выгрузка в ФинТабло</h3>
 <p class="subtle">Проверьте бюджет отделов за выбранный месяц и сравните его с существующим планом в ФинТабло. Сверка ничего не меняет в ФинТабло. Записи с направлениями или несколькими планами нужно проверить отдельно.</p>
-<div class="row"><label for="ftBudgetMonth">Месяц</label><input class="input" type="month" id="ftBudgetMonth"><button class="btn" type="button" id="ftBudgetPreview">Сравнить с ФинТабло</button></div><div id="ftBudgetResult" class="subtle" style="margin-top:12px"></div>
-<p class="subtle"><strong>Отправка плана пока не включена.</strong> После проверки интеграции выгрузка будет выполняться только по отдельному подтверждению.</p>
+<div class="row"><label for="ftBudgetMonth">Месяц</label><input class="input" type="month" id="ftBudgetMonth"><button class="btn" type="button" id="ftBudgetPreview">Сравнить с ФинТабло</button><button class="btn primary" type="button" id="ftBudgetSend" disabled>Отправить план</button></div><div id="ftBudgetResult" class="subtle" style="margin-top:12px"></div>
+<p class="subtle">Отправляются только отсутствующие записи без направления. Совпадающие записи пропускаются. Существующие планы с отличиями или направлениями требуют проверки.</p>
 </div></section>
 <section class="panel blockpad hidden" id="settingsView"><h2>Настройки доступа</h2><p class="subtle">Видимость отделов и возможность редактирования назначаются по адресу Google. Права проверяются на сервере при каждой операции.</p>
  <div class="two-col"><div class="settings-card"><h3>Пользователи</h3><div id="accessList"></div></div><div class="settings-card"><h3>Добавить / изменить пользователя</h3><div class="row"><input class="input" type="text" id="accessName" placeholder="ФИО сотрудника" autocomplete="name" style="flex:1;min-width:195px"><input class="input" type="email" id="accessEmail" placeholder="email@gmail.com" style="flex:1;min-width:195px"><select class="input" id="accessRole"><option value="user">Сотрудник</option><option value="admin">Администратор</option></select><label><input type="checkbox" id="accessEnabled" checked> Активен</label></div><div class="callout hidden" id="adminAccessNotice">Администратор автоматически имеет <b>полный доступ ко всем отделам, вкладкам и настройкам</b>. Настраивать галочки ему не требуется.</div><div id="limitedRights"><p class="subtle">Отделы: левый флажок — <b>видит</b>, правый — <b>редактирует</b>. Для доступа только на чтение снимите правые галочки «Редактирует».</p><div class="access-grid" id="accessGrid"></div>
@@ -301,6 +301,7 @@ const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;'
 const genId=()=>typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'row-'+Date.now()+'-'+Math.random().toString(36).slice(2);
 function call(name,...args){return new Promise((resolve,reject)=>{if(!window.google||!google.script||!google.script.run){reject(new Error('Для работы с сервером откройте опубликованное приложение Apps Script'));return;}google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args);});}
 let selectedRowIds=new Set(), selectedTrashEntries=new Set(), importPrepared=null, importFileName='', summaryText='', summaryDepartment='';
+let ftBudgetState=null;
 let cfoCollapsed=false,cfoDepartmentsCollapsed=false,bddsCollapsed=false,bddsData=null,bddsYear='',bddsFactData=null,bddsExpandedMonths=new Set(),bddsCommentTarget=null,bddsHistoryMode=false,bddsHistoryData=null;
 /* Единый шаблон генерируется тем же кодом, что выгрузка отдела. */
 let noteTarget=null;
@@ -784,7 +785,14 @@ function ftCheck(){
   });table.appendChild(body);root.appendChild(table);updateFinTabloApprovalCount();
  }).catch(e=>{$('ftPreview').textContent='Проверка не выполнена: '+(e.message||e);}).finally(()=>b.disabled=false);
 }
-function ftBudgetPreview(){const month=$('ftBudgetMonth').value;if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)){alert('Выберите месяц');return;}const button=$('ftBudgetPreview'),root=$('ftBudgetResult');button.disabled=true;root.textContent='Сравниваем план с ФинТабло…';call('wlFinTabloBudgetPreview',month).then(data=>{root.innerHTML='';const summary=document.createElement('p');summary.textContent='План нашего бюджета: '+data.rows.length+' статей. В ФинТабло найдено записей за месяц: '+data.remoteCount+'. Сравнение только для чтения.';root.appendChild(summary);if(data.warnings.length){const p=document.createElement('p');p.style.color='#a56812';p.textContent='Требуют проверки: '+data.warnings.join('; ');root.appendChild(p);}if(!data.rows.length)return;const table=document.createElement('table');table.className='ft-review';table.innerHTML='<thead><tr><th>Статья</th><th>Тип</th><th>Наш план</th><th>План ФинТабло</th><th>Результат</th></tr></thead>';const tbody=document.createElement('tbody');data.rows.forEach(item=>{const tr=document.createElement('tr');[item.name,item.type==='income'?'Поступление':'Списание',money(item.amount),item.remoteAmount==null?'—':money(item.remoteAmount),item.status].forEach(text=>{const td=document.createElement('td');td.textContent=text;tr.appendChild(td);});tbody.appendChild(tr);});table.appendChild(tbody);root.appendChild(table);}).catch(e=>{root.textContent='Не удалось выполнить сверку: '+(e.message||e);}).finally(()=>{button.disabled=false;});}
+function ftBudgetPreview(){ftBudgetState=null;$('ftBudgetSend').disabled=true;const month=$('ftBudgetMonth').value;if(!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)){alert('Выберите месяц');return;}const button=$('ftBudgetPreview'),root=$('ftBudgetResult');button.disabled=true;root.textContent='Сравниваем план с ФинТабло…';call('wlFinTabloBudgetPreview',month).then(data=>{root.innerHTML='';const summary=document.createElement('p');summary.textContent='План нашего бюджета: '+data.rows.length+' статей. В ФинТабло найдено записей за месяц: '+data.remoteCount+'. Сравнение только для чтения.';root.appendChild(summary);if(data.warnings.length){const p=document.createElement('p');p.style.color='#a56812';p.textContent='Требуют проверки: '+data.warnings.join('; ');root.appendChild(p);}if(!data.rows.length)return;const table=document.createElement('table');table.className='ft-review';table.innerHTML='<thead><tr><th>Статья</th><th>Тип</th><th>Наш план</th><th>План ФинТабло</th><th>Результат</th></tr></thead>';const tbody=document.createElement('tbody');data.rows.forEach(item=>{const tr=document.createElement('tr');[item.name,item.type==='income'?'Поступление':'Списание',money(item.amount),item.remoteAmount==null?'—':money(item.remoteAmount),item.status].forEach(text=>{const td=document.createElement('td');td.textContent=text;tr.appendChild(td);});tbody.appendChild(tr);});table.appendChild(tbody);root.appendChild(table);ftBudgetState=data;const blocked=data.warnings.length||data.rows.some(r=>!r.action||r.action==='blocked'),count=data.rows.filter(r=>r.action==='create').length;$('ftBudgetSend').disabled=!!blocked||!count;const note=document.createElement('p');note.textContent=blocked?'Отправка недоступна: исправьте перечисленные неоднозначности и повторите сверку.':count?'Будет создано записей: '+count+'. Совпадающие записи будут пропущены.':'Новых записей для отправки нет.';root.appendChild(note);}).catch(e=>{root.textContent='Не удалось выполнить сверку: '+(e.message||e);}).finally(()=>{button.disabled=false;});}
+function ftBudgetSend(){
+ const state=ftBudgetState;if(!state||state.month!==$('ftBudgetMonth').value)return;
+ const count=state.rows.filter(r=>r.action==='create').length;
+ if(!confirm('Отправить в ФинТабло план за '+monthLabel(state.month)+'? Будет создано '+count+' отсутствующих записей. Существующие записи не изменятся.'))return;
+ const button=$('ftBudgetSend'),root=$('ftBudgetResult');button.disabled=true;
+ call('wlFinTabloBudgetSend',state.month,state.hash).then(out=>{ftBudgetState=null;root.textContent='Отправка завершена: создано '+out.created+', совпадающих записей пропущено '+out.skipped+'.';}).catch(e=>{ftBudgetState=null;root.textContent='Отправка остановлена: '+(e.message||e)+'. Проверьте ФинТабло и повторите сверку.';});
+}
 function updateFinTabloApprovalCount(){const n=document.querySelectorAll('.ft-change-check:checked').length;$('ftApply').disabled=!n||!!(ftPreviewState&&ftPreviewState.blocked);$('ftApply').textContent='Применить выбранные ('+n+')';}
 function ftApply(){
  if(!ftPreviewState)return;
@@ -833,7 +841,7 @@ function enableYearArchive(){
  call('wlEnableAnnualArchive').then(()=>{$('yearArchiveStatus').textContent='Автоархивирование включено ✓';showYearArchives();}).catch(e=>{$('yearArchiveStatus').textContent='Ошибка: '+(e.message||e);}).finally(()=>b.disabled=false);
 }
 function wire(){
- $('ftBudgetMonth').value=monthKey||'';$('ftBudgetPreview').onclick=ftBudgetPreview;
+ $('ftBudgetMonth').value=monthKey||'';$('ftBudgetPreview').onclick=ftBudgetPreview;$('ftBudgetMonth').onchange=()=>{ftBudgetState=null;$('ftBudgetSend').disabled=true;};$('ftBudgetSend').onclick=ftBudgetSend;
  $('yearArchiveButton').onclick=()=>yearArchiveAction();
  $('enableAnnualArchive').onclick=()=>enableYearArchive();
   $('yearCloseButton').onclick=()=>yearAction('close');
@@ -1094,6 +1102,7 @@ function bddsSaveComment(){
 }
 function bddsLoadFact(){
  const month=$('bddsFactMonth').value;if(!boot.user.admin||!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||!month.startsWith(bddsYear+'-')){alert('Выберите месяц выбранного года');return;}
+ const now=new Date(),currentMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');if(month>=currentMonth){alert('Месяц ещё не завершился. План-факт будет доступен после окончания месяца.');return;}
  if(bddsYear==='2026'&&month<'2026-11'){alert('Загрузка факта в исторические месяцы пока не подключена');return;}
  if(!confirm('Получить фактические операции ФинТабло за '+monthLabel(month)+'? Данные в ФинТабло не изменяются.'))return;
  const year=bddsYear;$('bddsFetchFact').disabled=true;$('bddsStatus').textContent='Чтение фактических операций…';

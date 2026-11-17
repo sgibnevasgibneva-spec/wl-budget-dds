@@ -632,7 +632,7 @@ function wlDictionaryRename(kind,oldValue,newValue){
   if(!newValue||newValue.length>300||newValue.startsWith('='))throw Error('Недопустимое название');
   if(oldValue===newValue)return wlDictionaries_(ss);
   const index=WL_KEYS.indexOf(kind),dict=wlDictSheet_(ss),values=dict.getLastRow()>1?dict.getRange(2,index+1,dict.getLastRow()-1,1).getDisplayValues():[],hits=values.map((r,i)=>r[0]===oldValue?i:-1).filter(i=>i>=0);
-  if(hits.length!==1)throw Error('Название не найдено или встречается несколько раз');
+  if(!hits.length)throw Error('Название не найдено. Обновите справочник и повторите попытку');
   if(values.some(r=>String(r[0]).toLocaleLowerCase('ru')===newValue.toLocaleLowerCase('ru')))throw Error('Такое название уже есть');
   const changes=[],periods=new Set();
   for(const [sheet,col] of [[wlOps_(ss),3],[wlTrashSheet_(ss),4]]){
@@ -643,7 +643,7 @@ function wlDictionaryRename(kind,oldValue,newValue){
   const snapshot=changes.length?changes.map(c=>[new Date(),user.email,kind,oldValue,newValue,c.sheet.getName(),c.line,c.before]):[[new Date(),user.email,kind,oldValue,newValue,'', '', '']];
   if(audit.getMaxRows()<audit.getLastRow()+snapshot.length)audit.insertRowsAfter(audit.getMaxRows(),audit.getLastRow()+snapshot.length-audit.getMaxRows());
   audit.getRange(audit.getLastRow()+1,1,snapshot.length,8).setValues(snapshot);
-  changes.forEach(c=>c.sheet.getRange(c.line,c.col).setValue(c.after));dict.getRange(hits[0]+2,index+1).setValue(newValue);
+  changes.forEach(c=>c.sheet.getRange(c.line,c.col).setValue(c.after));hits.forEach(i=>dict.getRange(i+2,index+1).setValue(newValue));
   periods.forEach(month=>{wlInvalidateOpsIndex_(month);wlInvalidateFollowingMonths_(ss,month,false);});wlInvalidateDictionaries_();return wlDictionaries_(ss);
  });
 }
@@ -1186,16 +1186,18 @@ function wlBddsDeleteComment(year,month,key,expected){
  });
 }
 /** Fact is explicitly requested and read-only. API schema is validated before displaying. */
-function wlBddsFetchFact(year){
+function wlBddsFetchFact(year,requestedMonth){
  year=String(year||'');if(!/^\d{4}$/.test(year))throw Error('Неверный год');
+ requestedMonth=wlKey_(String(requestedMonth||''));if(!requestedMonth.startsWith(year+'-'))throw Error('Выберите месяц выбранного года');
  const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'БДДС',false);
  const token=PropertiesService.getScriptProperties().getProperty('WL_DDS_FINTABLO_API_TOKEN');
  if(!token)throw Error('Сначала сохраните ключ ФинТабло');
  const categories=wlFinTabloFetch_(),byId={};
  categories.forEach(c=>{if(c&&c.id)byId[String(c.id)]=String(c.name||c.title||'');});
- const rows=[],seen=new Set(),pageSize=500;let complete=false;
+ const moneybagsResponse=UrlFetchApp.fetch('https://api.fintablo.ru/v1/moneybag',{method:'get',muteHttpExceptions:true,followRedirects:false,headers:{Authorization:'Bearer '+token,Accept:'application/json'}});if(moneybagsResponse.getResponseCode()!==200)throw Error('Не удалось проверить валюты счетов ФинТабло');let bags;try{bags=JSON.parse(moneybagsResponse.getContentText()).items;}catch(_){throw Error('Некорректный ответ по счетам ФинТабло');}if(!Array.isArray(bags))throw Error('Неизвестный формат счетов ФинТабло');const currencies={};bags.forEach(b=>{if(b&&b.id)currencies[String(b.id)]=String(b.currency||'').toUpperCase();});
+ const rows=[],seen=new Set(),pageSize=500,mm=requestedMonth.slice(5),lastDay=new Date(Date.UTC(Number(year),Number(mm),0)).getUTCDate();let complete=false;
  for(let page=1;page<=40;page++){
-  const resp=UrlFetchApp.fetch('https://api.fintablo.ru/v1/transaction?isPlan=0&dateFrom=01.01.'+year+'&dateTo=31.12.'+year+'&page='+page+'&pageSize='+pageSize,{method:'get',muteHttpExceptions:true,followRedirects:false,headers:{Authorization:'Bearer '+token,Accept:'application/json'}});
+  const resp=UrlFetchApp.fetch('https://api.fintablo.ru/v1/transaction?isPlan=0&dateFrom=01.'+mm+'.'+year+'&dateTo='+lastDay+'.'+mm+'.'+year+'&page='+page+'&pageSize='+pageSize,{method:'get',muteHttpExceptions:true,followRedirects:false,headers:{Authorization:'Bearer '+token,Accept:'application/json'}});
   if(resp.getResponseCode()!==200)throw Error('Не удалось прочитать операции ФинТабло (HTTP '+resp.getResponseCode()+'). Факт не изменён');
   let obj;try{obj=JSON.parse(resp.getContentText());}catch(_){throw Error('Некорректный JSON операций ФинТабло');}
   const list=Array.isArray(obj)?obj:Array.isArray(obj.data)?obj.data:Array.isArray(obj.items)?obj.items:Array.isArray(obj.transactions)?obj.transactions:null;
@@ -1210,10 +1212,10 @@ function wlBddsFetchFact(year){
   if(parentIds.has(String(r.id)))continue;
   const planFlag=r.isPlan!==undefined?r.isPlan:r.isPlanned;
   if(planFlag===true||planFlag===1||planFlag==='1'){warnings.ignoredPlan++;continue;}
-  if(planFlag!==false&&planFlag!==0&&planFlag!=='0'){warnings.ignoredUnknown++;continue;}
+  if(planFlag!==undefined&&planFlag!==null&&planFlag!==false&&planFlag!==0&&planFlag!=='0'){warnings.ignoredUnknown++;continue;}
   const group=String(r.group||r.type||'').toLowerCase();if(group!=='income'&&group!=='outcome'){warnings.ignoredTransfer++;continue;}
-  const currency=String(r.currency||r.currencyCode||'RUB').toUpperCase();if(currency!=='RUB'&&currency!=='RUR'){warnings.ignoredCurrency++;continue;}
-  const rawDate=String(r.date||r.operationDate||r.dateFact||''),match=rawDate.match(/^(\d{2})\.(\d{2})\.(\d{4})$/),month=match?match[3]+'-'+match[2]:rawDate.slice(0,7);if(!month.startsWith(year)||!/^\d{4}-(0[1-9]|1[0-2])$/.test(month))continue;
+  const currency=String(r.currency||r.currencyCode||currencies[String(r.moneybagId||'')]||'').toUpperCase();if(currency!=='RUB'&&currency!=='RUR'){warnings.ignoredCurrency++;continue;}
+  const rawDate=String(r.date||r.operationDate||r.dateFact||''),match=rawDate.match(/^(\d{2})\.(\d{2})\.(\d{4})$/),month=match?match[3]+'-'+match[2]:rawDate.slice(0,7);if(month!==requestedMonth)continue;
   const amount=Number(r.value!==undefined?r.value:r.amount);if(!Number.isFinite(amount))continue;
   let category=String((r.category&&typeof r.category==='object'?(r.category.name||r.category.title):'')||'').trim();
   const catId=String(r.categoryId||r.category_id||(typeof r.category!=='object'?r.category:'')||'');if(!category)category=byId[catId]||'';
@@ -1223,5 +1225,5 @@ function wlBddsFetchFact(year){
   found.byMonth[month]=(found.byMonth[month]||0)+Math.abs(amount);articles.set(id,found);
  }
  if(rows.length&&warnings.ignoredUnknown===rows.length)throw Error('В API отсутствует надёжный признак план/факт. Факт не показан');
- return {year,articles:[...articles.values()],totalTransactions:rows.length,warnings,readOnly:true};
+ return {year,month:requestedMonth,articles:[...articles.values()],totalTransactions:rows.length,warnings,readOnly:true};
 }

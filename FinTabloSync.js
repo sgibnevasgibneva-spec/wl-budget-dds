@@ -105,7 +105,7 @@ function wlFinTabloDigest_(data){
 }
 /** Read-only comparison. Do not infer ownership of pre-existing plans. */
 function wlFinTabloBudgetPreview(month){
- month=wlKey_(month);const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'ФинТабло',false);if(month.startsWith('2026-'))throw Error('Для 2026 года требуется сверка с историческим БДДС. Она пока не подключена; бюджет отделов не будет использован вместо него.');wlFindMonth_(ss,month,false);
+ month=wlKey_(month);const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'ФинТабло',false);if(month.startsWith('2026-')&&month<'2026-11')throw Error('Для исторических месяцев требуется сверка с исходным БДДС. Она пока не подключена.');wlFindMonth_(ss,month,false);
  const token=PropertiesService.getScriptProperties().getProperty(WL_FT_TOKEN_PROP_);if(!token)throw Error('Сначала сохраните ключ ФинТабло');
  const cat=wlFinTabloNormalize_(wlFinTabloFetch_()),local=new Map(),warnings=cat.warnings.slice(),dict=wlDictionaries_(ss),income=new Set(dict.incomeCategories.map(wlBddsNormalize_)),expense=new Set(dict.categories.map(wlBddsNormalize_));
  for(const e of wlOpsRead_(wlOps_(ss),month)){const r=e.row,name=String(r.category||'').trim(),amount=Object.values(r.amounts||{}).reduce((s,v)=>s+(Number(v)||0),0);if(!amount)continue;if(!name){warnings.push('Есть сумма без статьи в отделе '+r.department);continue;}

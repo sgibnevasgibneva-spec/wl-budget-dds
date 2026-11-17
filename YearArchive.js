@@ -2,9 +2,16 @@
 const WL_YEAR_ARCHIVE_LINK_PREFIX='WL_DDS_YEAR_ARCHIVE_FILE_';
 
 function wlYearArchiveSnapshot(year,replaceExisting){
-  const ss=wlStore_(),u=wlAdmin_(ss);
-  const result=wlCreateYearArchive_(String(year||''),!!replaceExisting,ss);
-  return {ok:true,url:result.url,rows:result.rows,year:result.year,alreadyExisted:result.alreadyExisted};
+  return wlLock_(()=>{const ss=wlStore_(),u=wlAdmin_(ss),value=String(year||''),result=wlCreateYearArchive_(value,!!replaceExisting,ss);
+  if(value==='2026')wlArchiveHistoricalBdds2026_(result);
+  PropertiesService.getScriptProperties().setProperty('WL_DDS_BDDS_ARCHIVED_'+value,'true');
+  return {ok:true,url:result.url,rows:result.rows,year:result.year,alreadyExisted:result.alreadyExisted};});
+}
+function wlArchiveHistoricalBdds2026_(result){
+ const destination=SpreadsheetApp.openByUrl(result.url);if(destination.getSheetByName('БДДС 2026'))return;
+ const original=SpreadsheetApp.openById('1aVg5VqQkp1WSIeHYuK-SVrR5DRw22JqDy0qGhbN9Xkg').getSheetByName('БДДС');if(!original)throw Error('Не найден исходный БДДС 2026. Год не перенесён в архив.');
+ const values=original.getDataRange().getDisplayValues();if(values.length<2||values[0].length<6)throw Error('Не удалось прочитать исторический БДДС 2026. Год не перенесён в архив.');
+ const target=destination.insertSheet('БДДС 2026');try{if(target.getMaxRows()<values.length)target.insertRowsAfter(target.getMaxRows(),values.length-target.getMaxRows());if(target.getMaxColumns()<values[0].length)target.insertColumnsAfter(target.getMaxColumns(),values[0].length-target.getMaxColumns());const safe=values.map(row=>row.map(value=>/^[=+@-]/.test(value)?"'"+value:value));target.getRange(1,1,safe.length,safe[0].length).setNumberFormat('@').setValues(safe);target.setFrozenRows(1);target.setFrozenColumns(1);}catch(e){destination.deleteSheet(target);throw e;}
 }
 function wlCreateYearArchive_(year,overwrite,source){
   if(!/^(20|21)\d{2}$/.test(year))throw Error('Неверный год');

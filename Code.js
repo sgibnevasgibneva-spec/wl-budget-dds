@@ -386,14 +386,30 @@ function wlBoot(){
   console.log('WL_PERF boot '+(Date.now()-start)+'ms');
   const nowKey=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyy-MM');
   const current=active.some(m=>m.key===nowKey)?nowKey:(active.filter(m=>m.key<=nowKey).slice(-1)[0]||active[0]).key;
-  return {user,dict,months:active.map(m=>({key:m.key,status:m.status})),current,grouping:wlBddsGrouping_(ss)};
+  const props=PropertiesService.getScriptProperties(),archivedYears=[...new Set(active.map(m=>m.key.slice(0,4)))].filter(y=>props.getProperty('WL_DDS_BDDS_ARCHIVED_'+y)==='true');
+  return {user,dict,months:active.map(m=>({key:m.key,status:m.status})),current,archivedYears,grouping:wlBddsGrouping_(ss)};
+}
+function wlRowOrder_(ss,key,department,rows){
+ const sh=ss.getSheetByName('WL_Порядок_строк');if(!sh||sh.getLastRow()<2)return rows;
+ const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone(),records=sh.getRange(2,1,sh.getLastRow()-1,3).getValues(),found=records.find(r=>wlMonthCellKey_(r[0],zone)===key&&String(r[1])===department);let ids=[];if(found)try{ids=JSON.parse(String(found[2]));}catch(_){}if(!Array.isArray(ids))return rows;
+ const rank=new Map(ids.map((id,i)=>[String(id),i]));return rows.map((row,i)=>({row,i})).sort((a,b)=>(rank.has(a.row.id)?rank.get(a.row.id):ids.length+a.i)-(rank.has(b.row.id)?rank.get(b.row.id):ids.length+b.i)).map(x=>x.row);
+}
+function wlMoveBudgetRow(key,department,id,direction){
+ key=wlKey_(key);department=wlNormalizeDept_(department);id=String(id||'');if(!['up','down','top'].includes(direction))throw Error('Недопустимое направление');
+ return wlLock_(()=>{const ss=wlStore_(),user=wlUser_(ss),month=wlFindMonth_(ss,key);wlRequireBudgetYear_(user,key);wlRequireTab_(user,'Отделы',true);if(month.status!=='Открыт'||!user.edit.includes(department))throw Error('Нет права изменять строки этого отдела или месяц закрыт');
+  const rows=wlRowOrder_(ss,key,department,wlOpsRead_(wlOps_(ss),key).map(x=>x.row).filter(r=>r.department===department)),index=rows.findIndex(r=>r.id===id);if(index<0)throw Error('Строка не найдена. Обновите страницу');
+  const target=direction==='top'?0:direction==='up'?Math.max(0,index-1):Math.min(rows.length-1,index+1);const [moved]=rows.splice(index,1);rows.splice(target,0,moved);
+  const sh=wlNewSheet_(ss,'WL_Порядок_строк',['Месяц','Отдел','Порядок ID','Изменено','Кто изменил']),zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone(),old=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,2).getValues():[],i=old.findIndex(r=>wlMonthCellKey_(r[0],zone)===key&&String(r[1])===department),line=i<0?sh.getLastRow()+1:i+2;
+  sh.getRange(line,1,1,5).setValues([[key,department,JSON.stringify(rows.map(r=>r.id)),new Date(),user.email]]);return rows.map(r=>r.id);
+ });
 }
 function wlGetMonth(key){
   const start=Date.now();
   key=wlKey_(key);const ss=wlStore_(),user=wlUser_(ss);wlRequireBudgetYear_(user,key);let month=wlFindMonth_(ss,key);
   if(!wlCanSeeTab_(user,'Отделы')&&!wlCanSeeTab_(user,'ЦФО'))throw Error('Нет доступа к детальным данным бюджета');
   wlEnsureSkeleton_(ss,key);month=wlFindMonth_(ss,key);
-  const rows=wlOpsRead_(wlOps_(ss),key).map(x=>x.row).filter(r=>user.view.includes(r.department));
+  const visible=wlOpsRead_(wlOps_(ss),key).map(x=>x.row).filter(r=>user.view.includes(r.department));
+  const rows=user.view.flatMap(department=>wlRowOrder_(ss,key,department,visible.filter(r=>r.department===department)));
   console.log('WL_PERF getMonth '+key+' '+(Date.now()-start)+'ms');
   return {key,month:{key:month.key,status:month.status},rows};
 }

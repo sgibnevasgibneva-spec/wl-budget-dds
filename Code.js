@@ -1094,6 +1094,13 @@ function wlBddsPostComment(year,month,key,text){
   return {ok:true,messages:wlBddsComments_(ss,year)[month+'|'+key]||[]};
  });
 }
+/** Compare comment fields independently of the property order used by google.script.run. */
+function wlBddsCommentEqual_(left,right){
+ if(left===right)return true;
+ if(!left||!right||typeof left!=='object'||typeof right!=='object'||Array.isArray(left)!==Array.isArray(right))return false;
+ const a=Object.keys(left).sort(),b=Object.keys(right).sort();
+ return a.length===b.length&&a.every((key,i)=>key===b[i]&&wlBddsCommentEqual_(left[key],right[key]));
+}
 /** Delete a specific comment, preserving a recoverable snapshot. */
 function wlBddsDeleteComment(year,month,key,expected){
  year=String(year||'');month=wlKey_(month);key=String(key||'').trim();
@@ -1103,7 +1110,7 @@ function wlBddsDeleteComment(year,month,key,expected){
   const sh=ss.getSheetByName('WL_БДДС_Комментарии');if(!sh||sh.getLastRow()<2)throw Error('Комментарий не найден');
   const values=sh.getRange(2,1,sh.getLastRow()-1,4).getValues();
   const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone(),matches=[];
-  values.forEach((r,idx)=>{if(String(r[0])!==year||wlMonthCellKey_(r[1],zone)!==month||String(r[2])!==key)return;let messages;try{messages=JSON.parse(String(r[3])||'[]');}catch(_){throw Error('История комментариев повреждена');}if(!Array.isArray(messages))throw Error('История комментариев повреждена');messages.forEach((x,i)=>{if(JSON.stringify(x)===JSON.stringify(expected))matches.push({idx,i,messages});});});
+  values.forEach((r,idx)=>{if(String(r[0])!==year||wlMonthCellKey_(r[1],zone)!==month||String(r[2])!==key)return;let messages;try{messages=JSON.parse(String(r[3])||'[]');}catch(_){throw Error('История комментариев повреждена');}if(!Array.isArray(messages))throw Error('История комментариев повреждена');messages.forEach((x,i)=>{if(wlBddsCommentEqual_(x,expected))matches.push({idx,i,messages});});});
   if(matches.length!==1)throw Error('Комментарий изменился или неоднозначен. Обновите отчёт');
   const {idx,i,messages}=matches[0],removed=messages[i],now=new Date(),archive=wlNewSheet_(ss,'WL_БДДС_Удалённые комментарии',['Год','Месяц','Ключ','Комментарий JSON','Удалено','Кто удалил']);
   archive.appendRow([year,month,key,JSON.stringify(removed),now,user.email]);

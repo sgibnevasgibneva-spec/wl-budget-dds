@@ -1,0 +1,1206 @@
+<!DOCTYPE html>
+<html lang="ru"><head><base target="_top"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WL | Бюджет ДДС</title>
+<style>
+:root{font-family:Arial,Helvetica,sans-serif;font-size:13px;font-synthesis:none;color:#1e3048;background:#f3f6fa}
+*{box-sizing:border-box}body{margin:0}button,input,textarea,select{font:inherit}button{cursor:pointer}button:disabled{cursor:not-allowed;opacity:.45}
+header{background:#fff;border-bottom:1px solid #dfe6ee;position:sticky;top:0;z-index:30}
+.top{min-height:79px;padding:13px 22px;display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:12px;min-width:0}.brand-mark{width:69px;height:43px;display:flex;align-items:center;justify-content:center}.brand-mark img{width:67px;height:auto;object-fit:contain}
+.brand h1{font-size:20px;line-height:1.22;margin:0;color:#162640;font-weight:750}.brand small{display:block;margin-top:4px;font-size:12px;color:#7a879c}
+.period{display:flex;align-items:center;gap:7px;flex-wrap:wrap}.period select{border:1px solid #ced9e8;border-radius:8px;background:#fff;color:#26374e;font-size:14px;font-weight:700;padding:10px 8px;min-width:185px}
+.arrow{border:1px solid #e7edf6;background:#f2f6fb;border-radius:8px;width:35px;height:38px;font-size:21px;color:#365b98}
+.nav{display:flex;gap:7px;padding:0 20px;overflow-x:auto;scrollbar-width:thin}.nav button{border:0;border-bottom:3px solid transparent;background:#fff;padding:13px 14px 14px;white-space:nowrap;color:#65768b;font-size:14px;font-weight:700}
+.nav button.active{color:#264cbb;border-color:#3c5cd0}.nav button:hover{color:#264cbb}
+.wrap{padding:16px 18px 30px}.panel{border:1px solid #dce5ef;border-radius:12px;overflow:hidden;background:#fff;box-shadow:0 2px 8px #22395508}
+.hidden{display:none!important}.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.toolbar{padding:13px 16px;display:flex;justify-content:space-between;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px solid #e3eaf2}
+.btn{border:1px solid #cfdbee;border-radius:8px;background:#fff;padding:9px 12px;font-weight:700;font-size:13px;color:#334963}.btn:hover:not(:disabled){background:#f2f6fd}.btn.primary{background:#3554bf;color:#fff;border-color:#3554bf}.btn.active{color:#284fbb;background:#edf2ff;border-color:#bfcfff}.btn.danger{color:#ac3943;border-color:#f0c4c9}.btn.small{padding:6px 10px;font-size:12px}
+.badge{font-size:12px;padding:6px 9px;border-radius:7px;background:#edf3ff;color:#3a56a6;display:inline-flex;align-items:center;gap:6px;font-weight:600}.badge.closed{background:#fff3e1;color:#996219}.badge.good{background:#e9f8f1;color:#21875e}
+.label{font-size:12px;color:#6f7f94}.muted{font-size:12px;color:#8190a4}.status{font-size:12px;color:#677b95}.status.error{color:#bd4545}.deptselect,.input,.textarea{border:1px solid #cfd9e5;border-radius:8px;padding:9px 11px;color:#26384e;background:#fff;max-width:100%}.deptselect{min-width:265px;font-weight:700}
+.aux{background:#fafbfd;padding:12px 16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid #e4eaf0}
+.aux h2{margin:0;font-size:15px;font-weight:750}.spacer{flex:1}.scroll{overflow:auto;max-height:calc(100vh - 300px);min-height:250px;scrollbar-gutter:stable;overscroll-behavior:contain}#deptView{overflow:visible}#deptView>.toolbar{position:sticky;top:var(--wl-header-height,124px);z-index:15;background:#fff}#deptView>.aux{position:sticky;top:calc(var(--wl-header-height,124px) + var(--wl-toolbar-height,66px));z-index:14;background:#fafbfd}
+table{border-collapse:separate;border-spacing:0;font-size:12px;color:#26384f}
+th,td{border-right:1px solid #e0e8f1;border-bottom:1px solid #e0e8f1;vertical-align:middle}th{height:57px;background:#e9f0f7;text-align:left;font-size:12px;font-weight:700;padding:9px 10px;position:sticky;top:0;z-index:4}
+.ledger{table-layout:fixed;width:max-content;min-width:100%}.ledger td{height:58px;padding:0}.ledger th,.ledger td{background:#fff}
+.ledger th{background:#e9f0f7}.ledger .fixed{position:sticky;z-index:3}.ledger th.fixed{z-index:7;background:#e9f0f7}.c1{width:137px;min-width:137px;left:0}.c2{width:166px;min-width:166px;left:137px}.c3{width:220px;min-width:220px;left:303px}.c4{width:290px;min-width:290px;left:523px;box-shadow:3px 0 6px #16253712}
+.day{width:92px;min-width:92px;text-align:center;white-space:nowrap}.day small{display:block;font-weight:400;color:#8190a3;font-size:11px;margin-top:3px}.weekend{background:#fff1f4!important}
+.ledger td input,.ledger td select,.ledger td textarea{width:100%;height:100%;min-height:56px;border:0;outline:0;background:transparent;color:#23364e;padding:8px 9px;font-size:12px}
+.ledger td input:focus,.ledger td textarea:focus,.ledger td select:focus{background:#f2f6ff;box-shadow:inset 0 0 0 1px #7192ea}
+.ledger td textarea{resize:vertical;overflow-y:auto;min-height:56px;max-height:170px;line-height:1.45;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.ledger td input.amount{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:12px;font-weight:600}.ledger .money-total{background:#eff4fb;text-align:right;padding:0 10px;font-weight:800;min-width:124px;width:124px;font-variant-numeric:tabular-nums}
+.catpick{width:100%;height:100%;min-height:56px;background:transparent;color:#263850;display:flex;text-align:left;justify-content:space-between;align-items:center;gap:4px;padding:7px 9px;border:0}
+.catpick>span{display:block;white-space:normal;overflow-wrap:anywhere;line-height:1.35;flex:1}.catpick>b{flex:0 0 10px;font-size:14px}.catpick.missing{color:#b7683c}.catpick:focus{outline:1px solid #6383df;background:#f3f7ff}
+.del{border:none;background:transparent;color:#bd4853;min-width:28px;height:28px;font-size:20px;font-weight:400}
+.ledger .actioncell{width:95px;min-width:95px;text-align:center;background:#fff}
+.ledger .actioncell .delete-row{font-size:11px;white-space:nowrap;padding:6px 7px;border:1px solid #efc6cf;color:#a93e4f;background:#fff6f8;border-radius:7px;font-weight:700}
+.ledger .actioncell .delete-row:hover:not(:disabled){background:#ffe9ef}
+.ledger td[aria-disabled="true"]{background:#f9fafc;color:#78879c}
+.review-needed{background:#fff5d8!important;box-shadow:inset 3px 0 #e6a433}
+.review-notice{display:block;font-size:10px;line-height:1.25;padding:4px 9px;color:#87540e;font-weight:700;background:#ffedb5;white-space:normal}
+.review-list-item{border:1px solid #eed3a0;border-radius:9px;background:#fffaf0;padding:12px;margin:10px 0;line-height:1.5;overflow-wrap:anywhere}
+.review-list-item .review-detail{margin:7px 0;color:#6c5230}.review-list-item select{max-width:100%;min-width:220px}
+.tab-access{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:7px;margin:10px 0 16px}
+.tab-access label{border:1px solid #e6edf6;border-radius:7px;padding:9px;display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.tab-access .tab-name{flex:1;min-width:80px;font-weight:600}.tab-access small{color:#7b8594}
+
+#catPanel{position:fixed;z-index:100;background:#fff;border:1px solid #c8d5e6;border-radius:10px;box-shadow:0 14px 35px #182b4540;width:335px;max-width:calc(100vw - 24px);padding:7px}
+#catPanel input{width:100%;border:1px solid #cbd6e6;border-radius:6px;padding:9px;font-size:13px;margin-bottom:5px}
+#catOptions{max-height:290px;overflow:auto;display:grid;gap:2px}#catOptions button{display:block;background:#fff;border:0;text-align:left;border-radius:6px;padding:8px;white-space:normal;overflow-wrap:anywhere;line-height:1.4;color:#26374d}#catOptions button:hover{background:#edf3ff}
+.info{padding:12px 16px;background:#fafbfd;color:#74859b;font-size:12px;line-height:1.6;border-top:1px solid #e4eaf1}.blockpad{padding:18px}.blockpad h2{font-size:17px;margin:0 0 12px}.blockpad h3{font-size:14px;margin:16px 0 10px}
+.sumscroll{max-height:calc(100vh - 288px);overflow:auto;min-height:240px}.sumtable{width:max-content;min-width:100%;table-layout:fixed}.sumtable td{height:48px;background:#fff;padding:9px 11px;line-height:1.4;overflow-wrap:anywhere;vertical-align:middle}.sumtable th{white-space:normal;overflow-wrap:anywhere;text-align:center;min-width:117px;max-width:128px;width:128px;line-height:1.35;font-size:12px}
+.sumtable .catcol{position:sticky;left:0;min-width:270px;width:270px;max-width:270px;z-index:3;text-align:left;white-space:normal;overflow-wrap:anywhere;background:#fff}.sumtable th.catcol{z-index:8;background:#e9f0f7}.sumtable .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}.sumtable .totalrow td{background:#eaf0fa!important;font-weight:800}.sumtable .totalrow .catcol{background:#eaf0fa!important}.sumtable .rightmost{background:#f1f5fb;font-weight:800;width:130px;min-width:130px}
+.sumtable .dailycol{width:92px;min-width:92px;max-width:92px}.sumtable .dailycol.weekend{background:#fff0f4}.sumtable td.weekend{background:#fff8fa}
+.two-col{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:16px}.settings-card,.dictcard{border:1px solid #dfe6f1;border-radius:10px;padding:16px;background:#fff}.settings-card h3,.dictcard h3{margin:0 0 9px;font-size:14px}.subtle{color:#6d7e93;font-size:12px;line-height:1.55}
+.dictionary-items{display:flex;flex-wrap:wrap;gap:6px;max-height:280px;overflow:auto;margin:12px 0}.chip{background:#f0f4f9;padding:6px 8px;border-radius:7px;color:#30435d;display:flex;gap:8px;align-items:center;max-width:100%;overflow-wrap:anywhere;line-height:1.4}.chip .del{min-width:16px;width:16px;height:18px;font-size:15px}
+.access-table{width:100%;border-collapse:collapse;table-layout:fixed}.access-table td,.access-table th{border:1px solid #e4e9f2;padding:8px;text-align:left;height:37px}.access-table th{height:38px;position:static}.access-table td .btn{margin:1px}
+.access-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:5px 13px;margin:9px 0 15px}.access-grid label{display:flex;align-items:center;gap:8px;border:1px solid #e6edf6;border-radius:8px;padding:8px;font-size:12px;line-height:1.4}
+.access-grid input{width:16px;height:16px;flex:none}.access-grid .editopt{margin-left:auto}
+.instruction{padding:19px 24px;max-width:980px}.instruction h2{font-size:21px;margin:0 0 14px}.instruction ol{padding-left:22px}.instruction li{margin-bottom:13px;line-height:1.6}.instruction p{line-height:1.7;color:#576d83}.callout{padding:13px 15px;border:1px solid #c6d5ef;background:#f3f7ff;border-radius:8px;line-height:1.6}
+.errorpanel{margin:25px auto;max-width:850px;padding:24px;border:1px solid #f1c7c8;border-radius:12px;background:#fff7f7;color:#a2383d;line-height:1.6}
+@media(max-width:750px){.wrap{padding:10px}.top{padding:10px}.nav{padding:0 10px}.brand h1{font-size:17px}.brand small{display:none}.scroll{max-height:72vh}.c1{min-width:125px;width:125px}.c2{min-width:150px;width:150px;left:125px}.c3{left:275px;width:205px;min-width:205px}.c4{left:480px;min-width:235px;width:235px}.sumtable .catcol{min-width:210px;width:210px;max-width:210px}}
+
+
+/* Стили выбора строк и импорта */
+.ledger .c0{width:43px;min-width:43px;left:0;text-align:center;box-shadow:1px 0 #e0e8f1}
+.ledger .c1{left:43px}.ledger .c2{left:180px}.ledger .c3{left:346px}.ledger .c4{left:566px}
+.ledger .checkcell{position:sticky;left:0;z-index:5;text-align:center;background:#fff;width:43px;min-width:43px}
+.ledger .checkcell input,.ledger th.c0 input{width:17px;height:17px;min-height:0;cursor:pointer;accent-color:#3554bf}
+.ledger tr.selected>td{background:#eef4ff!important}.ledger tr.selected>td.weekend{background:#f8edf4!important}
+.access-table tr.selected>td{background:#eaf1ff!important}.trash-row-check{width:17px;height:17px;cursor:pointer;accent-color:#3554bf}
+.bulk-tip{background:#fbfcff;color:#718095;font-size:11px;padding:5px 15px;border-bottom:1px solid #edf1f6}
+.file-picker{display:inline-flex;padding:10px 13px;border:1px solid #cfdbee;border-radius:8px;background:#fff;color:#334963;font-weight:700;cursor:pointer}
+.import-preview{margin:12px 0;padding:12px;background:#f8fafc;border-radius:8px;border:1px solid #e4eaf2;line-height:1.65;overflow-wrap:anywhere}
+.import-preview.error{background:#fff7f7;border-color:#efbfc0;color:#a93e45}
+.import-preview.success{background:#effaf4;border-color:#a5d9bc;color:#206941}
+.import-preview ul{margin:5px 0 0;padding-left:18px;max-height:160px;overflow:auto}
+#summarySearch{max-width:230px}#summaryDept{max-width:230px}
+#accessRole{min-width:165px}
+@media(max-width:750px){.ledger .c1{left:43px}.ledger .c2{left:168px}.ledger .c3{left:318px}.ledger .c4{left:523px}}
+
+/* Cell comments: context menu instead of controls overlaying the amounts. */
+.ledger td.amount-cell{position:relative}
+.ledger td.amount-cell.has-comment::after{content:"";position:absolute;right:0;top:0;border-top:12px solid #f2b83d;border-left:12px solid transparent;pointer-events:none}
+.comment-context-menu{position:fixed;z-index:150;min-width:240px;border:1px solid #d2deec;border-radius:9px;box-shadow:0 14px 32px #23395530;padding:5px;background:#fff}
+.comment-context-menu button{display:block;width:100%;text-align:left;border:0;border-radius:6px;background:#fff;padding:11px 12px;color:#253a55}
+.comment-context-menu button:hover{background:#eef4ff}
+.note-modal-bg{position:fixed;inset:0;z-index:170;background:#0d1d3670;display:flex;align-items:center;justify-content:center;padding:16px}
+.note-modal{width:500px;max-width:100%;max-height:90vh;overflow:auto;background:#fff;border-radius:12px;border:1px solid #cbd6e6;box-shadow:0 14px 40px #13264240;padding:18px;display:flex;flex-direction:column;gap:12px}
+.note-modal h3{margin:0;font-size:17px}.note-modal p{margin:0;color:#6d7b90;line-height:1.45}
+.note-modal textarea{width:100%;min-height:94px;resize:vertical;border:1px solid #c5d1e0;border-radius:8px;padding:10px 12px;font:inherit;line-height:1.5}
+.note-modal textarea:focus{outline:2px solid #a5b8f4}.note-modal .row{justify-content:flex-end}
+.comment-history{display:flex;flex-direction:column;gap:8px;max-height:280px;overflow:auto}
+.comment-message{border:1px solid #e2e9f3;background:#f7f9fc;border-radius:10px;padding:10px 12px;overflow-wrap:anywhere;line-height:1.55}
+.comment-message strong{display:block;color:#20344e}.comment-message small{display:block;margin:3px 0 6px;color:#78879c}
+#deptSummary .sumscroll{padding:16px;display:block;max-height:calc(100vh - 315px)}
+#deptSummary .sumtable{width:min(100%,720px);max-width:720px;min-width:0;table-layout:fixed;border:1px solid #dde6f1;border-radius:9px;overflow:hidden}
+#deptSummary .sumtable .catcol{width:69%;min-width:0;max-width:none}
+#deptSummary .sumtable .num{width:31%;text-align:right;white-space:nowrap}
+#deptSummary .sumtable th{height:43px}#deptSummary .sumtable td{height:41px}
+
+/* Страница неподвижна; скролл существует только внутри таблиц и настроек. */
+html,body{height:100%;overflow:hidden}
+body{display:flex;flex-direction:column;min-height:0}
+header{flex:0 0 auto;position:relative;top:auto}
+.wrap{flex:1;min-height:0;overflow:hidden;display:flex;flex-direction:column;padding:10px 16px 12px}
+.wrap>.panel{min-height:0}
+#deptView,#summaryView{height:100%;min-height:0;display:flex;flex-direction:column}
+#deptView>.toolbar,#deptView>.aux{position:static;top:auto;z-index:auto;flex:0 0 auto}
+#deptView>.toolbar{gap:10px}
+#deptView>.toolbar .aux{margin-left:auto;background:transparent;border:0;padding:0;gap:8px;flex:0 0 auto}
+#deptExpenses,#deptSummary{flex:1;min-height:0;display:flex;flex-direction:column}
+#deptExpenses>.scroll,#deptSummary>.sumscroll,#summaryView>.sumscroll{flex:1;min-height:0;max-height:none;overflow:auto}
+#deptSummary>.sumscroll{max-height:none;padding:18px 12px}
+#deptSummary .sumtable{margin-left:auto;margin-right:auto;max-width:780px}
+#dictView,#settingsView,#helpView,#ftView{height:100%;min-height:0;overflow:auto;overscroll-behavior:contain}
+#summaryView>.toolbar{flex:0 0 auto}
+.sum-section td{background:#e6eef9!important;color:#173f70;font-weight:800!important;height:39px!important;text-align:left!important;letter-spacing:.03em}
+.sum-subtotal td{background:#f5f8fc!important;font-weight:700!important}
+.sum-net td{background:#e6eef9!important;font-weight:800!important}
+#deptSummary .sum-section td,#deptSummary .sum-subtotal td,#deptSummary .sum-net td{background:#e6eef9!important}
+
+/* Highlight income as a meaningful financial classification, not merely decoration. */
+.ledger td.income-category,.ledger td.income-category .catpick{background:#e7f7ea!important;color:#17633d}
+.ledger td.income-category .catpick:focus{box-shadow:inset 0 0 0 2px #67ad83}
+#catOptions button.income-option{background:#e7f7ea;color:#17633d}
+#catOptions button.income-option:hover{background:#d5f0db}
+.ft-review{border-collapse:collapse;width:100%;margin-top:10px;table-layout:fixed}
+.ft-review td,.ft-review th{padding:10px;text-align:left;position:static;height:auto;border:1px solid #e1e9ef;background:#fff;white-space:normal;overflow-wrap:anywhere}
+.ft-review th{background:#eef3f8}
+.ft-review .ft-income td{background:#eaf8ed}
+.ft-review .ft-remove td{background:#fff7f0}
+@media(max-width:950px){.wrap{padding:6px}#deptView>.toolbar .aux{margin-left:0}}
+
+
+/* Финальная система типографики: один шрифт во всех разделах. */
+:root,body,button,input,textarea,select,table,th,td,.btn,.badge,.chip,.nav{font-family:Arial,Helvetica,sans-serif!important;font-synthesis:none}
+#summaryTable,#summaryTable th,#summaryTable td,#deptSummary .sumtable,#deptSummary .sumtable th,#deptSummary .sumtable td{font-size:12.5px;line-height:1.45}
+#summaryTable th,#deptSummary .sumtable th{font-weight:700}
+#summaryTable .num,#deptSummary .num{font-variant-numeric:tabular-nums;font-feature-settings:'tnum' 1;font-size:12.5px}
+#summaryTable .sum-section .catcol{position:sticky;left:0;z-index:6;background:#e6eef9!important;color:#173f70;white-space:nowrap;overflow-wrap:normal;min-width:270px;max-width:270px;width:270px;padding:10px 12px}
+#summaryTable .sum-section .section-fill{background:#e6eef9!important;border-left:0;padding:0}
+#summaryTable .sum-section td{height:42px!important;letter-spacing:0;font-weight:700!important}
+#summaryTable .totalrow td,#summaryTable .sum-subtotal td,#summaryTable .sum-net td{font-weight:700!important}
+#summaryView>.sumscroll{scrollbar-gutter:stable;overscroll-behavior:contain}
+.archive-help{background:#f0f5ff;border:1px solid #d3e0f5;border-radius:8px;padding:10px 12px;margin:10px 0;font-size:12px;color:#304768;line-height:1.55;max-width:900px}
+@media(max-width:750px){#summaryTable .sum-section .catcol{min-width:210px;max-width:210px;width:210px}}
+
+
+/* CFO and BDDS: same font, bounded scroll, frozen first column. */
+#bddsView{height:100%;min-height:0;display:flex;flex-direction:column}
+#bddsView>.sumscroll{flex:1;min-height:0;overflow:auto;scrollbar-gutter:stable;overscroll-behavior:contain}
+.bdds-table{font-size:12px;width:max-content;min-width:100%;border-collapse:collapse;line-height:1.45}
+.bdds-table th,.bdds-table td{font-size:12px;font-family:Arial,Helvetica,sans-serif;padding:10px 12px;white-space:nowrap}
+.bdds-table .catcol{min-width:310px;max-width:310px;width:310px;white-space:normal;position:sticky;left:0;z-index:4;background:#fff}
+.bdds-table thead th{position:sticky;top:0;z-index:5;background:#eaf0f8}
+.bdds-table thead th.catcol{z-index:7}
+.bdds-table tr.bdds-section .catcol,.bdds-table tr.bdds-subtotal .catcol{background:#e6eef9!important}
+.bdds-table tr.bdds-article .catcol{padding-left:26px}
+.bdds-table tr.bdds-net td{background:#d7e5f5!important;font-weight:800}
+.bdds-table tr.bdds-unmapped td{background:#fff6df!important}
+.bdds-footnote{margin:0;padding:8px 14px;font-size:12px;border-top:1px solid #e7ebf1}
+#summaryView>.sumscroll .sumtable{width:max-content;min-width:100%}
+@media(max-width:800px){.bdds-table .catcol{min-width:230px;max-width:230px;width:230px}}
+
+.bdds-table tr.bdds-group td{background:#f1f5fa!important;font-weight:700;border-top:1px solid #d8e1ef}
+.bdds-table tr.bdds-group .catcol{padding-left:24px;background:#f1f5fa!important}
+.bdds-table tr.bdds-article .catcol{padding-left:42px}
+.bdds-table .bdds-year-total{background:#edf3fc;font-weight:750}
+.bdds-month-toggle{display:block;width:100%;min-width:96px;padding:10px;background:transparent;border:0;color:#174977;font-weight:bold;cursor:pointer}
+.bdds-month-toggle:hover{background:#ddeafd}
+.bdds-table thead tr:first-child th{top:0;z-index:9}
+.bdds-table thead tr:nth-child(2) th{top:39px;z-index:8}
+.bdds-table thead tr:first-child th.catcol{z-index:11}
+.bdds-comment-button{border:0;background:transparent;cursor:pointer;margin-left:3px;font-size:11px;color:#315681}
+.bdds-comment-button:hover{background:#dceafd}
+@media(max-width:960px){#bddsView>.toolbar>.row{flex-wrap:wrap;gap:6px}}
+#summaryView .sumtable.cfo-compact{min-width:0;width:auto;margin:0 auto}
+#summaryView .sumtable.cfo-compact th:not(.catcol),#summaryView .sumtable.cfo-compact td:not(.catcol){min-width:150px}
+.bdds-month-start,.bdds-month-head{border-left:3px solid #8ca9cb!important}
+.bdds-comment-cell{min-width:160px;max-width:220px;white-space:normal}
+.bdds-comment-button{font-size:12px;text-align:left;white-space:normal;overflow-wrap:anywhere}
+</style></head><body>
+<header><div class="top">
+ <div class="brand"><span class="brand-mark"><img id="brandLogo" alt="WL" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAD8AAAAeCAYAAACbr8ZMAAAFlklEQVR4nO2Z23PV1RXHP2vv3zkhAwkhhoREwyWlIgYMlQC1NbQUa2VoR2YctR1m9MFxfPDBf8eZjr51egMfvJY4441gRwVjMUII6TEhF4I5kOQkJzm3314+/AoEzu/8cg5gfQjft/Pb6/bde+29115HFhYWWK4wP3YAPybukl+uWNbkvZIjuQz2P58jiX41k+No/Vr89k5xHXvC5bMZzPk+TKJfZWoSmZ1Ba1bjOn4u/o5HQlUkNYX96t/I2LDK7DTksrjN7eJ3PYGurCmLgCQnMOf7kJGEmiuTYC3+1p+J69yLrqiunLykpvD++qqaS2OQTiHZDMSrMIlz6k9elMJjh64L5/PY3hPYLz5Rmb4M6Vkkl4VCHrwYZiSh6nnitu26bn8hjf3kPcyZXpXpy8hCOpB3DpkYVRkbJv/8K4IXK036wiD2s4/UXBhE5lIwPxf4FUHGhtWNDZF/9iWpmLzX/Ybac6fB+dc/5rJIcgL78bvqWtaLe/BhZGIE792/qxn9FplKguqNhgp5JHkJ7/gxzW3bJQDmbC/243fUjA4FQd9Mai6FPduLn+jH3b+9eDw9h/3oLTXfnEKuTCKZm65qVWT6Mqb3U+Tgn9BVteWTl2wG82XPjcQXj89OY3u6Fd8X79gRNRMjUCiUdABgRhKQz+F98Cb2VI9KcgKcK61QyGPGLxSRl6EBvPf+EUx2ejbSp2QWkOnLFZL/bhyZT0eT+e8ZzORFlcmLkXLXsDBP7G+vqjl3OnS1w6Dmxow1iX68o6+puTgSPXGLbUj0eV5EXiVymwBBdlAucQB12NOfQz5Xvso9Tdf9DQ0QO/Kayvhw+T5jcbR+baRI0dRoYzNaU1e+k3JRAXFicVzbAwCYxFli//xzZcQBt2kLLHHaF+dFfAX+voNLL/8PCNe+E6pXIslLxI68rmasMuIAfmeXsEQWh24Kf/c+/K7fVezwTqGw7w+Cc3hv/0Vl/ELF+lq7Br9955JyoeR1VS2F/YfEtbZV7Ph24Tr24O7diD15HHumF9AldW6Gv/eAUEaRVPI41Lp7cJ1d//f0Lzx2SGR+Fu/9N5RctnIDYsAYZHRoSdHS5S3gGtZV7vw2UNj/JK5lA96xo0hy4taMqGJ7jqk51YNrbcM/+EcpdYBHkpeZqVsL4Bbgtu/C/9VBkVwW+9mHWlQtlg0NKj8mkeQEkstq/vDLgi2mGlkFmIGvbzWCiuA2bCb/+8OitXXI2a+Q1J2ZdMlmsH0nMWe+DB2PJn/u9B0JIgqueT35p14QbWwGwPadvI1VD0Eui+kPX8SS5K+9tsqE1q7BNbdWFJdre4D84ZdFWzdx9U42o99WZKMcyOxM6PfSK5/NlG3cbW4n/9wrouvKJ+869pB/+kXR+zYFJ/RVpOfKtlEurmbVzSh54GlNHXhe5ItNq6rx9x7A3/moaGMLMjQgtvfT6JyNxSk8+jj+Lx8XDblNtL4BSUc/ftyWh/C7nhC1FjM8iP3wLZVSixWL47Z3hl7ZpU/76mr8Pb/BnugO0fJwDz5M4ZH9ove1oTWrg6A6dqMnuoO3fZhO+0783b8W19qG1q4JJ9a5V8xIInQCXWML/i9+K27rDrRhHYigrT/BNbZI7OjrWvTMjcXJH3hGXMuGUF8S1beXqST2RLeawW/A92HValxDE7p1h7i1zWh9I1i7KDofM9CHPXX8f2WpQnwFbuP9uJ9uE21sRtc0EHbtXPM5l8Ie/xfmfJ+Sy0B9E66uHm26V9z6zWhDE1SvvFEpl8UMD2IGvlYzPgypKbR+bdBC2/IQpaq9SPIQNC+YSwVdGi8G8apgSywmvRh+AZm5AgvzwW9jYGVN0FQwJXSKJmAGZlNBQyW+AuJxtKo6+pXmXNDguNoSi1ehq+shFi/t5+4/NssUd8kvV3wPXGlgok7oPAAAAAAASUVORK5CYII="></span><div><h1>Бюджет ДДС</h1><small>Планирование движения денежных средств · все суммы в рублях</small></div></div>
+ <div class="period"><button class="arrow" id="prev" title="Предыдущий месяц">‹</button><select id="monthSelect" aria-label="Выбрать месяц"></select><button class="arrow" id="next" title="Следующий месяц">›</button><span class="badge" id="monthStatus"></span><button class="btn small admin-only hidden" id="addMonthBtn">+ Месяц</button><button class="btn small admin-only hidden" id="closeMonthBtn">Закрыть месяц</button></div>
+</div><nav class="nav" id="tabs"></nav></header>
+<div class="wrap">
+<div class="errorpanel hidden" id="errorPanel"></div>
+<section class="panel" id="deptView">
+ <div class="toolbar"><div class="row"><span class="label">Отдел:</span><select class="deptselect" id="departmentSelect"></select><button class="btn" id="addRow">+ Добавить строку</button><button class="btn" id="exportDept" type="button">Скачать бюджет (.xlsx)</button><button class="btn danger" id="bulkDelete" disabled>Удалить выбранные</button><span id="selectedCount" class="status">0 выбрано</span><span class="status" id="saveStatus">Загрузка…</span></div><div class="aux"><button class="btn active" id="deptExpensesBtn">Расходы по дням</button><button class="btn" id="deptSummaryBtn">Итого по статьям</button></div><span class="badge hidden" id="currentMonthBadge" aria-hidden="true"></span></div>
+ <div id="deptExpenses"><div class="bulk-tip" id="bulkTip">Для массового удаления отметьте строки галочками слева. Удалённые записи можно восстановить через администратора.</div><div class="scroll"><table class="ledger" id="ledger"><thead id="ledgerHead"></thead><tbody id="ledgerBody"></tbody></table></div><div class="info">Заполняйте суммы по датам. Изменения сохраняются автоматически. Длинные названия можно вводить в несколько строк. Чтобы оставить комментарий к сумме, нажмите правой кнопкой мыши на её ячейку.</div></div>
+ <div class="hidden" id="deptSummary"><div class="summarytitle toolbar"><b>Суммы по статьям выбранного отдела</b><span class="badge hidden" id="deptSummaryTotal" aria-hidden="true"></span></div><div class="sumscroll"><table class="sumtable"><thead><tr><th class="catcol">Статья ДДС</th><th>Итого за месяц</th></tr></thead><tbody id="deptSummaryBody"></tbody></table></div></div>
+</section>
+<section class="panel hidden" id="summaryView"><div class="toolbar"><div class="row"><h2 style="margin:0 9px 0 0;font-size:17px">ЦФО · план по отделам</h2><button class="btn active" id="summaryMonthly">По отделам за месяц</button><button class="btn" id="cfoFoldDepartments">− Отделы</button><button class="btn" id="cfoFold">Свернуть статьи</button><button class="btn" id="summaryDaily">По дням</button><input class="input" id="summarySearch" placeholder="Найти статью ДДС" aria-label="Поиск статьи"><select class="input" id="summaryDept" aria-label="Фильтр по отделу"><option value="">Все доступные отделы</option></select></div><span class="badge hidden" id="summaryTotal" aria-hidden="true"></span></div><div class="sumscroll"><table class="sumtable" id="summaryTable"><thead id="summaryHead"></thead><tbody id="summaryBody"></tbody></table></div></section>
+<section class="panel hidden" id="bddsView" aria-label="Бюджет движения денежных средств">
+ <div class="toolbar"><div class="row"><h2 style="margin:0;font-size:17px">БДДС · план и факт</h2><select class="input" id="bddsYearSelect" aria-label="Год для БДДС"></select><button class="btn" id="bddsRefresh">Обновить отчёт</button><button class="btn" id="bddsFold">Свернуть статьи</button><button class="btn" id="bddsFoldMonths">Развернуть месяцы</button><button class="btn primary admin-only hidden" id="bddsFetchFact" title="Только чтение данных из ФинТабло">Получить факт из ФинТабло</button></div><span class="status" id="bddsStatus">План из бюджетов отделов. Факт поступит из ФинТабло.</span></div>
+ <div class="sumscroll"><table class="sumtable bdds-table" id="bddsTable"><thead id="bddsHead"></thead><tbody id="bddsBody"></tbody></table></div>
+ <p class="subtle bdds-footnote">Факт и отклонения станут доступны после подключения чтения фактических операций из ФинТабло. Нажмите на месяц, чтобы раскрыть План/Факт/Отклонение. Нераспознанные статьи остаются отдельно для проверки, чтобы суммы не потерялись.</p>
+</section>
+<div class="note-modal-bg hidden" id="bddsCommentOverlay" role="presentation"><div class="note-modal" role="dialog" aria-modal="true">
+ <h3>Комментарии БДДС</h3><p id="bddsCommentContext"></p><div class="comment-history" id="bddsCommentHistory" style="max-height:220px;overflow:auto"></div>
+ <textarea id="bddsCommentText" maxlength="1600" placeholder="Новый комментарий"></textarea>
+ <div class="row"><span class="status" id="bddsCommentStatus"></span><span class="spacer"></span><button class="btn" id="bddsCommentCancel">Закрыть</button><button class="btn primary" id="bddsCommentSave">Добавить комментарий</button></div>
+</div></div>
+<section class="panel blockpad hidden" id="dictView"><h2>Справочники</h2><p class="subtle">Постоянные списки для всех периодов. Изменения не зависят от месяца. Добавлять и удалять пункты может администратор; занятые в операциях пункты удалить нельзя.</p><div class="two-col" id="dictCards"></div>
+
+</section>
+<section class="panel blockpad hidden" id="ftView"><h2>ФинТабло</h2>
+<p class="subtle">Раздел доступен только администратору. Работа со статьями — только чтение из ФинТабло. Все изменения согласуются перед записью в наш бюджет.</p>
+ <div class="settings-card admin-only hidden" id="ftSyncCard" style="margin-top:18px;max-width:960px">
+  <h3>Загрузка статей из ФинТабло</h3>
+  <p class="subtle">Читаем справочник ФинТабло. Исключаем архив, головные статьи с подстатьями и переводы. В ФинТабло ничего не изменяем. Исторические операции бюджета не удаляются.</p>
+  <div class="row"><input class="input" style="min-width:260px;flex:1" type="password" id="ftApiToken" autocomplete="new-password" placeholder="API-ключ ФинТабло (не отображается)"><button class="btn" type="button" id="ftSaveToken">Сохранить ключ</button><button class="btn" type="button" id="ftCheck">Получить статьи</button><button class="btn primary" type="button" id="ftApply" disabled>Применить выбранные</button></div>
+  <div id="ftTokenStatus" class="status" aria-live="polite"></div><div id="ftPreview" class="import-preview" style="white-space:normal;line-height:1.6" aria-live="polite">Нажмите «Получить статьи» для проверки изменений. Ни одна статья не изменится без подтверждения.</div>
+ </div>
+<div class="settings-card admin-only hidden" style="margin-top:16px;max-width:960px">
+<h3>План БДДС · выгрузка в ФинТабло</h3>
+<p class="subtle">Следующий этап: после завершения бюджета и составления БДДС появятся предварительный просмотр, проверка расхождений и отдельное подтверждение выгрузки плана за выбранный месяц.</p>
+<p class="subtle"><strong>Сейчас выгрузка выключена.</strong> В ФинТабло не отправляются изменения. Будущая интеграция будет ограничена только планом БДДС, без доступа на изменение операций и справочников ФинТабло.</p>
+</div></section>
+<section class="panel blockpad hidden" id="settingsView"><h2>Настройки доступа</h2><p class="subtle">Видимость отделов и возможность редактирования назначаются по адресу Google. Права проверяются на сервере при каждой операции.</p>
+ <div class="two-col"><div class="settings-card"><h3>Пользователи</h3><div id="accessList"></div></div><div class="settings-card"><h3>Добавить / изменить пользователя</h3><div class="row"><input class="input" type="text" id="accessName" placeholder="ФИО сотрудника" autocomplete="name" style="flex:1;min-width:195px"><input class="input" type="email" id="accessEmail" placeholder="email@gmail.com" style="flex:1;min-width:195px"><select class="input" id="accessRole"><option value="user">Сотрудник</option><option value="admin">Администратор</option></select><label><input type="checkbox" id="accessEnabled" checked> Активен</label></div><div class="callout hidden" id="adminAccessNotice">Администратор автоматически имеет <b>полный доступ ко всем отделам, вкладкам и настройкам</b>. Настраивать галочки ему не требуется.</div><div id="limitedRights"><p class="subtle">Отделы: левый флажок — <b>видит</b>, правый — <b>редактирует</b>. Для доступа только на чтение снимите правые галочки «Редактирует».</p><div class="access-grid" id="accessGrid"></div>
+ <h3>Доступ к вкладкам</h3><p class="subtle">Для «ЦФО», «Справочники» и «Инструкция» у сотрудника только просмотр. Изменять справочники, статьи ДДС и настройки может исключительно администратор.</p>
+ <div class="tab-access" id="tabAccessGrid"></div></div><button class="btn primary" id="saveAccess">Сохранить доступ</button><span class="status" id="accessStatus"></span></div></div>
+ <div class="settings-card admin-only hidden" style="margin-top:16px"><h3>Закрытие финансового года</h3>
+  <p class="subtle">Закрывает сразу все существующие месяцы выбранного года. Сотрудники больше не могут вносить и удалять данные. Просмотр и скачивание сохраняются. Действие фиксируется в журнале.</p>
+  <div class="row"><select class="input" id="yearCloseSelect" aria-label="Год"></select><button class="btn danger" id="yearCloseButton" type="button">Закрыть год</button><button class="btn" id="yearReopenButton" type="button">Открыть год</button><span id="yearStatus" class="status"></span></div>
+ <p class="subtle" style="margin-top:12px">С 1 января сотрудники автоматически видят только текущий и будущие годы. Администратор может открыть предыдущие годы для просмотра. Архив — отдельная Google-таблица, совместимая с шаблоном импорта. Операции не удаляются.</p>
+ <div class="row"><button class="btn" id="yearArchiveButton" type="button">Создать архив завершённого года</button><button class="btn" id="enableAnnualArchive" type="button">Включить автоархивирование 1 января</button><span id="yearArchiveStatus" class="status"></span></div>
+ <div id="yearArchiveLinks" class="subtle" style="margin-top:8px"></div>
+ </div>
+ <div class="settings-card" style="margin-top:16px"><h3>Корзина удалённых строк</h3><p class="subtle">Все удаления записываются в журнал. Только администратор может восстановить строку; месяц должен быть открыт.</p><div class="row"><button class="btn" id="loadTrash">Обновить корзину</button><button class="btn" id="restoreSelectedTrash" disabled>Восстановить выбранные</button><button class="btn danger" id="purgeSelectedTrash" disabled>Очистить выбранные из корзины</button><span class="status" id="trashSelectedCount">0 выбрано</span><span class="status" id="trashStatus"></span></div><p class="subtle">Очистка корзины необратима; остаётся только минимальный журнал действий. Можно выбрать несколько записей.</p><div id="trashList" style="max-height:320px;overflow:auto;margin-top:12px"></div></div>
+ <div class="settings-card" style="margin-top:16px"><h3>Журнал очистки корзины</h3><p class="subtle">Операции очистки сохраняются для финансового контроля. Ежемесячно записи старше 35 дней можно переносить в архивный лист Google Sheets, не уничтожая историю.</p><button class="btn" id="enableMonthlyAudit">Включить ежемесячную архивацию</button><span id="auditStatus" class="status"></span></div><div class="settings-card" style="margin-top:16px"><h3>Проверка изменённых описаний <span class="badge" id="reviewCount">0</span></h3>
+ <p class="subtle">Когда сотрудник изменяет описание, строка выделяется жёлтым. Администратор проверяет правильность статьи ДДС и подтверждает её.</p>
+ <div class="row"><button class="btn" id="loadReviews">Обновить уведомления</button><span class="status" id="reviewStatus"></span></div><div id="reviewList"></div></div>
+ <div class="settings-card" style="margin-top:16px" id="excelImportCard">
+ <h3>Загрузка бюджета из Excel</h3>
+ <p class="subtle">Единый файл для выгрузки и загрузки: сотрудник скачивает бюджет своего отдела, меняет дни и суммы в Excel, затем передаёт администратору. Сохраните ID строки, контрольную сумму и тип потока. До загрузки система проверяет конфликты и показывает, что изменится.</p>
+ <div class="row"><button class="btn" id="downloadExcelTemplate" type="button" title="Скачать актуальный Excel-шаблон импорта">Скачать единый шаблон Excel</button><label class="file-picker">Выбрать Excel (.xlsx)<input type="file" id="excelFile" accept=".xlsx" style="display:none"></label><button class="btn primary" id="uploadExcel" disabled>Проверить Excel</button><button class="btn primary" id="confirmExcel" disabled>Загрузить проверенные строки</button></div>
+ <div class="import-preview" id="importPreview">Файл ещё не выбран.</div><div class="status" id="importStatus"></div>
+ <div id="spreadsheetLink" class="subtle" style="margin-top:10px"></div></div>
+</section>
+<section class="panel hidden" id="helpView"><div class="instruction" id="employeeGuide"><h2>Инструкция сотруднику: как заполнить бюджет</h2>
+ <ol>
+ <li><b>Войдите через свой Google-аккаунт.</b> Если приложение сообщает об отсутствии доступа, попросите администратора добавить вашу почту в разделе «Настройки».</li>
+ <li><b>Выберите месяц</b> в верхней части экрана и <b>свой отдел</b> в разделе «Отделы». Если вы не видите нужного отдела, обратитесь к администратору.</li>
+ <li><b>Добавьте строку расхода</b> кнопкой «+ Добавить строку» либо измените уже существующую.</li>
+ <li>В колонках <b>«Как платим?»</b>, <b>«Откуда платим?»</b>, <b>«Статья ДДС»</b> выберите значения из справочников. Для длинной статьи откройте поле и воспользуйтесь поиском.</li>
+ <li>В <b>«Описание/название затрат»</b> напишите, за что запланирован расход. Допускается длинный текст, он переносится на несколько строк.</li>
+ <li>Внесите сумму в конкретный <b>день месяца</b>. Чтобы добавить комментарий к сумме, нажмите <b>правой кнопкой</b> на её ячейку → «Добавить комментарий». Имя автора и время сохраняются автоматически. <b>Скачать заполненный бюджет</b> можно кнопкой над таблицей.  Бюджет заполняется в рублях. Можно ввести <b>=1500*3</b>, <b>=1000+250</b>, <b>=10/3</b> или формулу со скобками. Результат отображается с двумя знаками после запятой без округления вверх.</li>
+ <li><b>Сохранять вручную не нужно.</b> Дождитесь надписи «Сохранено ✓». При ошибке сохранения нажмите на красную надпись, чтобы повторить отправку. Не закрывайте страницу при надписи «Сохраняется…».</li>
+ <li>Нажмите <b>«Итого по статьям»</b>, чтобы увидеть сумму расходов вашего отдела по каждой статье ДДС. В разделе <b>«ЦФО»</b> данные суммируются по всем отделам, к которым у вас есть доступ.</li>
+ <li><b>Если изменили описание:</b> оно подсветится жёлтым и попадёт в список проверок администратора. Статью ДДС может менять только администратор.</li>
+ <li><b>Удаление строки:</b> нажмите «🗑 Удалить» справа от ненужной строки либо отметьте несколько строк галочками слева и нажмите «Удалить выбранные». Подтвердите действие. Она исчезнет только из выбранного месяца, а её сумма — из сводов. Ошибочно удалённое может восстановить администратор в «Настройки → Корзина».</li>
+ <li><b>Импорт из Excel:</b> выполняет администратор через «Настройки → Загрузка бюджета из Excel» по специальному шаблону. Перед записью приложение показывает ошибки. Сотруднику импорт недоступен.</li>
+<li>При переходе к следующему месяцу <b>строки и их описания копируются без сумм</b>; данные прежнего месяца остаются на месте.</li>
+ <li>Если месяц отмечен <b>«Закрыт»</b>, редактирование заблокировано. Открыть месяц может только администратор.</li>
+ </ol><div class="callout"><b>Важно:</b> бюджет заполняется в рублях.</div></div>
+<div class="instruction admin-only hidden" id="adminGuide" style="margin-top:14px"><h2>Инструкция администратора</h2>
+<ol><li><b>Пользователи:</b> откройте «Настройки» и назначьте ФИО, Google email, видимость и редактирование отделов и вкладок. Не предоставляйте права администратора сотрудникам.</li>
+<li><b>Новые месяцы:</b> добавляйте кнопкой «+ Месяц». Закрытый месяц блокирует ввод; открыть его может только администратор.</li>
+<li><b>Закрытие года и архив:</b> с 1 января сотрудникам автоматически перестают показываться месяцы завершённого года. Администратор сохраняет доступ к историческим месяцам. Кнопка «Закрыть год» отдельно блокирует изменения, в том числе для администратора; резервный архив создавайте и проверяйте до закрытия.</li>
+<li><b>Excel:</b> скачайте бюджет в «Отделах», внесите изменения в дни и суммы, не меняйте ID строки и контрольную сумму, затем передайте файл администратору. В «Настройках» администратор проверит изменения и подтвердит импорт. Шаблон и выгрузка имеют одинаковую структуру.</li><li><b>ЦФО и БДДС:</b> автоматические отчёты по бюджетам отделов. В БДДС пока отображается план, а факт и отклонения появятся после подключения ФинТабло.</li><li><b>ФинТабло:</b> в отдельной вкладке «ФинТабло» получите список статей, отметьте нужные изменения и подтвердите импорт в наш справочник. Это не отправляет данные в ФинТабло. Выгрузка плана БДДС будет отдельным этапом с подтверждением.</li>
+<li><b>Архивные статьи:</b> исключаются из новых выпадающих списков, но исторические строки и суммы остаются на месте. При необходимости вручную переклассифицируйте старые операции.</li>
+<li><b>Контроль:</b> проверяйте «Настройки → Проверка изменённых описаний», корзину, корректность импорта Excel и своды по отделам. Перед крупными изменениями сохраняйте резервную копию Google Sheets.</li></ol>
+</div></section>
+</div>
+
+<div class="comment-context-menu hidden" id="amountCommentMenu" role="menu"><button type="button" id="openAmountComments">Добавить комментарий</button></div>
+<div class="note-modal-bg hidden" id="amountNoteOverlay" role="presentation">
+ <div class="note-modal" role="dialog" aria-modal="true" aria-labelledby="amountNoteHeading">
+   <h3 id="amountNoteHeading">Комментарии к сумме</h3>
+   <p id="amountNoteContext"></p>
+   <div class="comment-history" id="amountNoteHistory"></div>
+   <textarea id="amountNoteText" maxlength="1000" placeholder="Напишите комментарий — кто и когда написал, сохранится автоматически…"></textarea>
+   <div class="row"><button class="btn danger hidden" id="amountNoteRemove" type="button">Удалить обсуждение</button><span class="spacer"></span><button class="btn" id="amountNoteCancel" type="button">Закрыть</button><button class="btn primary" id="amountNoteSave" type="button">Отправить комментарий</button></div>
+ </div>
+</div>
+<div id="catPanel" class="hidden"><input id="catSearch" type="search" placeholder="Найти статью ДДС"><div id="catOptions"></div></div>
+<script>
+(function(){'use strict';
+const monthsRu=['Январь','Февраль','Март','Апрель','Май','Июнь','Июль','Август','Сентябрь','Октябрь','Ноябрь','Декабрь'];
+const daysRu=['Вс','Пн','Вт','Ср','Чт','Пт','Сб'];
+const TABS=['Отделы','ЦФО','БДДС','Справочники','ФинТабло','Настройки','Инструкция'];
+const VIEWS=['deptView','summaryView','bddsView','dictView','ftView','settingsView','helpView'];
+const $=s=>document.getElementById(s);
+// Всегда показываем копейки: 1 250,00. Для дробей сверх двух знаков — отсечение, не округление.
+const fmt=new Intl.NumberFormat('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2});
+function truncateToKopecks(value){
+ const n=Number(value);
+ if(!Number.isFinite(n))return 0;
+ // Смягчаем только погрешность IEEE-754 вблизи целого количества копеек.
+ const scaled=n*100;
+ return Math.trunc(scaled+Math.sign(scaled)*1e-7)/100;
+}
+const money=n=>fmt.format(truncateToKopecks(n));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const genId=()=>typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'row-'+Date.now()+'-'+Math.random().toString(36).slice(2);
+function call(name,...args){return new Promise((resolve,reject)=>{if(!window.google||!google.script||!google.script.run){reject(new Error('Для работы с сервером откройте опубликованное приложение Apps Script'));return;}google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args);});}
+let selectedRowIds=new Set(), selectedTrashEntries=new Set(), importPrepared=null, importFileName='', summaryText='', summaryDepartment='';
+let cfoCollapsed=false,cfoDepartmentsCollapsed=false,bddsCollapsed=false,bddsData=null,bddsYear='',bddsFactData=null,bddsExpandedMonths=new Set(),bddsCommentTarget=null;
+/* Единый шаблон генерируется тем же кодом, что выгрузка отдела. */
+let noteTarget=null;
+let boot=null,months=[],monthKey='2026-11',rows=[],dict={departments:[],payments:[],sources:[],categories:[]},dept='',activeTab='Отделы',summaryMode='monthly',deptMode='expenses';
+let loading=false,saving=false,closed=false,pending=new Map(),timer=null,saveError=false,queuedMonth=null,loadVersion=0,settings=null,catTarget=null,reviewCount=0;
+let saveRetries=0,monthCache=new Map();
+/** Three most recent months, local to this browser. Every open still refreshes from the server. */
+function rememberMonth(key,data){
+  const copy=JSON.parse(JSON.stringify({rows:data.rows||[],month:data.month||{status:'Открыт'}}));
+  monthCache.delete(key);monthCache.set(key,copy);
+  while(monthCache.size>3)monthCache.delete(monthCache.keys().next().value);
+}
+function refreshCurrentCachedMonth(){
+  if(!monthKey||!rows)return;
+  rememberMonth(monthKey,{rows,month:{status:closed?'Закрыт':'Открыт'}});
+}
+function monthLabel(k){const [y,m]=k.split('-').map(Number);return monthsRu[m-1]+' '+y;}
+function numDays(){const [y,m]=monthKey.split('-').map(Number);return new Date(y,m,0).getDate();}
+function canEdit(){return !loading&&!closed&&boot&&boot.user&&boot.user.tabEdit.includes('Отделы')&&boot.user.edit.includes(dept);}
+function canEditCategory(){return canEdit()&&boot.user.admin;}
+function status(s,error){$('saveStatus').textContent=s;$('saveStatus').classList.toggle('error',!!error);}
+function showError(e){$('errorPanel').textContent='Ошибка: '+(e&&e.message||String(e));$('errorPanel').classList.remove('hidden');}
+function hideError(){$('errorPanel').classList.add('hidden');}
+function periodStatus(){
+ const period=months.find(m=>m.key===monthKey),s=period?period.status:'Открыт';closed=s==='Закрыт';$('monthStatus').textContent=closed?'🔒 Закрыт':'● Открыт';$('monthStatus').className='badge '+(closed?'closed':'good');
+ $('closeMonthBtn').textContent=closed?'Открыть месяц':'Закрыть месяц';$('currentMonthBadge').textContent=monthLabel(monthKey);
+ $('prev').disabled=months.findIndex(m=>m.key===monthKey)<=0;$('next').disabled=months.findIndex(m=>m.key===monthKey)>=months.length-1;
+}
+function selectMonths(){const sel=$('monthSelect');sel.innerHTML=months.map(m=>'<option value="'+esc(m.key)+'">'+esc(monthLabel(m.key))+(m.status==='Закрыт'?' · закрыт':'')+'</option>').join('');sel.value=monthKey;periodStatus();}
+function changeMonth(key){if(!months.some(m=>m.key===key))return;if(saving||pending.size){queuedMonth=key;status('Сохраняем перед сменой месяца…');$('monthSelect').value=monthKey;flush();return;}selectedRowIds.clear();monthKey=key;bddsYear=key.slice(0,4);bddsExpandedMonths=new Set([key]);selectMonths();if(activeTab==='БДДС')renderBdds();else loadMonth();}
+function shiftMonth(delta){const i=months.findIndex(m=>m.key===monthKey)+delta;if(i>=0&&i<months.length)changeMonth(months[i].key);}
+function tabs(){const nav=$('tabs');nav.innerHTML='';
+ TABS.forEach(t=>{if(!boot.user.tabs.includes(t))return;let b=document.createElement('button');
+ b.textContent=t+(t==='Настройки'&&reviewCount?' · ⚠ '+reviewCount:'');b.className=t===activeTab?'active':'';
+ b.onclick=()=>{activeTab=t;tabs();views();};nav.appendChild(b);});}
+function refreshReviewCount(){if(!boot||!boot.user.admin)return;call('wlReviewList').then(items=>{reviewCount=items.length;tabs();}).catch(e=>{console.warn('Не удалось загрузить уведомления',e);});}
+function views(){VIEWS.forEach((id,i)=>$(id).classList.toggle('hidden',activeTab!==TABS[i]));if(activeTab==='ЦФО')renderSummary();if(activeTab==='БДДС')renderBdds(true);if(activeTab==='Справочники')renderDictionaries();if(activeTab==='Настройки'){loadSettings();showYearArchives();}}
+function departmentOptions(){const s=$('departmentSelect');s.innerHTML=boot.user.view.map(d=>'<option value="'+esc(d)+'">'+esc(d)+'</option>').join('');if(!boot.user.view.includes(dept))dept=boot.user.view[0]||'';s.value=dept;$('addRow').disabled=!canEdit();refreshBulkUi();}
+function rowSum(r){return Object.values(r.amounts||{}).reduce((s,n)=>s+(Number(n)||0),0);}
+function tableHead(){let h='<tr><th class="fixed c0"><input id="selectAllRows" type="checkbox" aria-label="Выбрать все строки отдела"></th><th class="fixed c1">Как платим?</th><th class="fixed c2">Откуда платим?</th><th class="fixed c3">Статья ДДС</th><th class="fixed c4">Описание/название затрат</th>';
+ const [y,m]=monthKey.split('-').map(Number);for(let d=1;d<=numDays();d++){const dow=new Date(y,m-1,d).getDay();h+='<th class="day'+([0,6].includes(dow)?' weekend':'')+'">'+d+'.'+('0'+m).slice(-2)+'<small>'+daysRu[dow]+'</small></th>';}h+='<th class="money-total">Итого за месяц</th><th style="width:95px;min-width:95px">Действие</th></tr>';$('ledgerHead').innerHTML=h;const all=$('selectAllRows');if(all)all.onchange=e=>setAllRows(e.target.checked);
+}
+function addSelect(td,r,key,list){const s=document.createElement('select');s.disabled=!canEdit();s.setAttribute('aria-label',key);let options=['',...list];if(r[key]&&!list.includes(r[key]))options.splice(1,0,r[key]);options.forEach(v=>{let o=document.createElement('option');o.value=v;o.textContent=v||'Выберите из списка';s.appendChild(o)});s.value=r[key]||'';s.onchange=()=>{r[key]=s.value;queue(r,key,s.value);};td.appendChild(s);}
+
+// Compact, dependency-free XLSX export (valid OpenXML ZIP), generated from loaded rows.
+function xmlSafe(value){return String(value==null?'':value).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&apos;'}[c]));}
+function excelCol(n){let o='';for(n++;n;n=Math.floor((n-1)/26))o=String.fromCharCode(65+(n-1)%26)+o;return o;}
+function sheetXml(data,withTotals){
+ const lines=data.map((row,ri)=>'<row r="'+(ri+1)+'">'+row.map((val,ci)=>{
+  const cell=excelCol(ci)+(ri+1);
+  if(withTotals&&ri>0&&ci===37)return '<c r="'+cell+'" s="1"><f>SUM(G'+(ri+1)+':AK'+(ri+1)+')</f><v>'+(Number(val)||0)+'</v></c>';
+  if(ri===0)return '<c r="'+cell+'" s="2" t="inlineStr"><is><t xml:space="preserve">'+xmlSafe(val)+'</t></is></c>';
+  if(withTotals&&ri>0&&ci>=6&&ci<=36&&typeof val==='number')return '<c r="'+cell+'" s="1"><v>'+val+'</v></c>';
+ 
+  if(typeof val==='number'&&Number.isFinite(val))return '<c r="'+cell+'"><v>'+val+'</v></c>';
+  return '<c r="'+cell+'" t="inlineStr"><is><t xml:space="preserve">'+xmlSafe(val)+'</t></is></c>';
+ }).join('')+'</row>').join('');
+ return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetViews><sheetView workbookViewId="0"><pane ySplit="1" topLeftCell="A2" activePane="bottomLeft" state="frozen"/></sheetView></sheetViews><sheetData>'+lines+'</sheetData></worksheet>';
+}
+function makeStoredZip(parts){
+ const enc=new TextEncoder(),buffers=[],central=[];let at=0;
+ const u16=n=>[n&255,(n>>>8)&255],u32=n=>[n&255,(n>>>8)&255,(n>>>16)&255,(n>>>24)&255];
+ const concat=xs=>{const len=xs.reduce((s,a)=>s+a.length,0),out=new Uint8Array(len);let i=0;for(const x of xs){out.set(x,i);i+=x.length;}return out;};
+ function crc32(bytes){let crc=0xffffffff;for(const b of bytes){crc^=b;for(let j=0;j<8;j++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}return (crc^0xffffffff)>>>0;}
+ for(const [name,content] of parts){
+  const label=enc.encode(name),bytes=enc.encode(content),crc=crc32(bytes),offset=at;
+  const local=Uint8Array.from([...u32(0x04034b50),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(bytes.length),...u32(bytes.length),...u16(label.length),...u16(0)]);
+  buffers.push(local,label,bytes);at+=local.length+label.length+bytes.length;
+  const c=Uint8Array.from([...u32(0x02014b50),...u16(20),...u16(20),...u16(0x0800),...u16(0),...u16(0),...u16(0),...u32(crc),...u32(bytes.length),...u32(bytes.length),...u16(label.length),...u16(0),...u16(0),...u16(0),...u16(0),...u32(0),...u32(offset)]);
+  central.push(c,label);
+ }
+ const centralSize=central.reduce((s,b)=>s+b.length,0);
+ const end=Uint8Array.from([...u32(0x06054b50),...u16(0),...u16(0),...u16(parts.length),...u16(parts.length),...u32(centralSize),...u32(at),...u16(0)]);
+ return new Blob([concat([...buffers,...central,end])],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+}
+const WL_EXCEL_HEADERS=['Месяц','Отдел','Как платим','Откуда платим','Статья ДДС','Описание/название затрат',...Array.from({length:31},(_,i)=>String(i+1).padStart(2,'0')),'Итого за месяц','ID строки','Контрольная сумма','Тип потока'];
+function excelFingerprint(key,row){
+ const values=[];for(let d=1;d<=31;d++)values.push(Math.round((Number((row.amounts||{})[d])||0)*100)/100);
+ return fnv1a(JSON.stringify([key,String(row.department||'').trim()==='Отдел запусков'?'Запуски':String(row.department||'').trim(),String(row.payment||''),String(row.source||''),String(row.category||''),String(row.description||''),values]));
+}
+function excelBudgetPackage(records,filename,comments){
+ const budget=[WL_EXCEL_HEADERS,...records],notes=[['ID строки','Месяц','Отдел','Статья ДДС','Описание затрат','Дата','Автор','Google email','Написано','Комментарий'],...(comments||[])];
+ const parts=[
+  ['[Content_Types].xml','<?xml version="1.0" encoding="UTF-8"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/worksheets/sheet2.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/></Types>'],
+  ['_rels/.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'],
+  ['xl/workbook.xml','<?xml version="1.0" encoding="UTF-8"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Импорт" sheetId="1" r:id="rId1"/><sheet name="Комментарии" sheetId="2" r:id="rId2"/></sheets><calcPr fullCalcOnLoad="1"/></workbook>'],
+  ['xl/_rels/workbook.xml.rels','<?xml version="1.0" encoding="UTF-8"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'],
+  ['xl/styles.xml','<?xml version="1.0" encoding="UTF-8"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><numFmts count="1"><numFmt numFmtId="164" formatCode="#,##0.00;[Red](#,##0.00);–"/></numFmts><fonts count="2"><font><sz val="10"/><name val="Arial"/></font><font><b/><sz val="10"/><color rgb="FFFFFFFF"/><name val="Arial"/></font></fonts><fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="solid"><fgColor rgb="FF27456C"/><bgColor indexed="64"/></patternFill></fill></fills><borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders><cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="3"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/><xf numFmtId="164" fontId="0" fillId="0" borderId="0" xfId="0" applyNumberFormat="1"/><xf numFmtId="0" fontId="1" fillId="1" borderId="0" xfId="0" applyFill="1" applyFont="1"/></cellXfs></styleSheet>'],
+  ['xl/worksheets/sheet1.xml',sheetXml(budget,true)],['xl/worksheets/sheet2.xml',sheetXml(notes,false)]
+ ];
+ const blob=makeStoredZip(parts),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;
+ a.download=filename;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),30000);
+}
+function downloadDepartmentBudget(){
+ if(!boot||!dept||loading)return alert('Сначала выберите отдел и дождитесь загрузки данных');
+ if(saving||pending.size){flush();return alert('Дождитесь завершения автосохранения и повторите скачивание');}
+ const own=rows.filter(r=>r.department===dept),data=[],comments=[];
+ for(const r of own){
+   data.push([monthKey,dept,r.payment||'',r.source||'',r.category||'',r.description||'',...Array.from({length:31},(_,i)=>Number((r.amounts||{})[i+1])||''),rowSum(r),r.id,excelFingerprint(monthKey,r),cashFlowType(r)==='income'?'Поступление':'Списание']);
+   Object.entries(r.notes||{}).forEach(([day,raw])=>commentMessages(raw).forEach(msg=>comments.push([r.id,monthKey,dept,r.category||'',r.description||'',day,msg.by||'',msg.email||'',msg.at||'',msg.text||''])));
+ }
+ excelBudgetPackage(data,'WL_Бюджет_'+dept.replace(/[\\/:*?"<>|]/g,'_')+'_'+monthKey+'.xlsx',comments);
+}
+function downloadExcelTemplate(){
+ const blanks=Array.from({length:30},()=>Array(41).fill(''));
+ excelBudgetPackage(blanks,'WL_DDS_Единый_шаблон.xlsx',[]);
+}
+function commentMessages(raw){
+ if(!raw)return [];
+ if(typeof raw==='string')return raw?[{text:raw,by:'Ранее добавлено',email:'',at:''}]:[];
+ if(Array.isArray(raw))return raw;
+ if(raw&&Array.isArray(raw.messages))return raw.messages;
+ return raw&&raw.text?[raw]:[];
+}
+function updateAmountNoteMarker(cell,row,day){
+ const messages=commentMessages((row.notes||{})[day]);
+ cell.classList.toggle('has-comment',messages.length>0);
+ const last=messages[messages.length-1];
+ cell.title=last?'Комментарии: '+messages.length+' · '+(last.by||last.email||'Автор не указан')+'\n'+last.text:'Правый клик: добавить комментарий';
+}
+let commentMenuTarget=null;
+function closeCommentMenu(){$('amountCommentMenu').classList.add('hidden');commentMenuTarget=null;}
+function showCommentMenu(event,row,day,cell){
+ event.preventDefault();event.stopPropagation();
+ closeCategory();commentMenuTarget={row,day,cell};
+ const menu=$('amountCommentMenu'),messages=commentMessages((row.notes||{})[day]);
+ $('openAmountComments').textContent=messages.length?'Просмотреть / добавить комментарий ('+messages.length+')':'Добавить комментарий';
+ menu.classList.remove('hidden');
+ menu.style.left=Math.min(event.clientX,window.innerWidth-menu.offsetWidth-12)+'px';
+ menu.style.top=Math.min(event.clientY,window.innerHeight-menu.offsetHeight-12)+'px';
+}
+function openAmountNote(row,day,cell){
+ noteTarget={row,day,cell};closeCommentMenu();
+ $('amountNoteContext').textContent=monthLabel(monthKey)+' · '+row.department+' · '+day+' число · '+(row.description||row.category||'Расход');
+ const history=$('amountNoteHistory');history.innerHTML='';
+ const messages=commentMessages((row.notes||{})[day]);
+ if(!messages.length){const empty=document.createElement('p');empty.textContent='Комментариев пока нет';history.appendChild(empty);}
+ messages.forEach(m=>{
+  const card=document.createElement('div');card.className='comment-message';
+  const author=document.createElement('strong');author.textContent=m.by||m.email||'Ранее добавлено';
+  const time=document.createElement('small');time.textContent=m.at?new Date(m.at).toLocaleString('ru-RU'):'';
+  const body=document.createElement('div');body.textContent=m.text||'';
+  card.append(author,time,body);history.appendChild(card);
+ });
+ $('amountNoteText').value='';const writable=canEdit();
+ $('amountNoteText').disabled=!writable;$('amountNoteSave').classList.toggle('hidden',!writable);
+ $('amountNoteRemove').classList.toggle('hidden',!writable||(!boot.user.admin&&messages.some(m=>String(m.email||'').toLowerCase()!==boot.user.email))||!messages.length);
+ $('amountNoteOverlay').classList.remove('hidden');
+ if(writable)$('amountNoteText').focus();else $('amountNoteCancel').focus();
+}
+function closeAmountNote(){noteTarget=null;$('amountNoteOverlay').classList.add('hidden');}
+function saveAmountNote(value,remove){
+ if(!noteTarget||!canEdit())return;
+ const {row,day,cell}=noteTarget,text=String(value||'').trim();
+ if(!remove&&!text)return alert('Напишите комментарий перед отправкой');
+ if(text.length>1000)return alert('Комментарий не должен превышать 1000 символов');
+ if(!row.notes||typeof row.notes!=='object')row.notes={};
+ const messages=commentMessages(row.notes[day]);
+ if(remove)delete row.notes[day];else{
+  messages.push({text,by:boot.user.name||boot.user.email,email:boot.user.email,at:new Date().toISOString()});
+  row.notes[day]={messages};
+ }
+ updateAmountNoteMarker(cell,row,day);closeAmountNote();
+ queue(row,'note',remove?'':text,day,remove?'delete':'append');refreshCurrentCachedMonth();
+}
+function nearestAvailableCurrentMonth(list,serverKey){
+ const now=new Date(),today=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+ // Use the browser's local calendar, not a fixed month baked into an old deployment.
+ if(list.some(m=>m.key===today))return today;
+ const preceding=list.filter(m=>m.key<=today).map(m=>m.key).sort();
+ if(preceding.length)return preceding[preceding.length-1];
+ return list.some(m=>m.key===serverKey)?serverKey:(list[0]&&list[0].key)||today;
+}
+function inputMoney(s){const raw=String(s).replace(/[\s\u00A0\u202F]/g,'').replace('.',',');let m=raw.match(/^(-?)(\d*)(,\d{0,2})?$/);if(!m)return null;return m[1]+m[2].replace(/\B(?=(\d{3})+(?!\d))/g,' ')+(m[3]||'');}
+function parseMoney(s){let raw=String(s).replace(/[\s\u00A0\u202F]/g,'').replace(',','.');if(!raw)return '';if(!/^-?\d+(\.\d{0,2})?$/.test(raw))return null;return Number(raw);}
+/** Безопасный арифметический калькулятор: без eval/Function и без доступа к коду.
+ * Разрешены только + - * /, скобки, числа с точкой или запятой.
+ * Считаем дробями BigInt, а затем ОТСЕКАЕМ дробь до копеек.
+ */
+function evaluateBudgetFormula(input){
+ let source=String(input||'').trim();
+ if(!source.startsWith('='))throw new Error('Формула должна начинаться со знака =');
+ source=source.slice(1).replace(/[\s\u00a0\u202f]/g,'').replace(/,/g,'.');
+ if(!source||source.length>150||!/^[0-9+\-*/().]+$/.test(source))throw new Error('Разрешены только числа, +, −, *, / и скобки');
+ let pos=0, operations=0, depth=0;
+ const ab=v=>v<0n?-v:v;
+ function rational(n,d){
+  if(d===0n)throw new Error('Деление на ноль');
+  if(d<0n){n=-n;d=-d;}
+  let a=ab(n),b=d;
+  while(b!==0n){const t=a%b;a=b;b=t;}
+  return {n:n/a,d:d/a};
+ }
+ function combine(a,b,op){
+  if(++operations>70)throw new Error('Слишком длинная формула');
+  if(op==='+')return rational(a.n*b.d+b.n*a.d,a.d*b.d);
+  if(op==='-')return rational(a.n*b.d-b.n*a.d,a.d*b.d);
+  if(op==='*')return rational(a.n*b.n,a.d*b.d);
+  return rational(a.n*b.d,a.d*b.n);
+ }
+ function primary(){
+  if(source[pos]==='('){
+   if(++depth>20)throw new Error('Слишком много вложенных скобок');
+   pos++;const value=expression();
+   if(source[pos]!==')')throw new Error('Не закрыта скобка');
+   pos++;depth--;return value;
+  }
+  const match=source.slice(pos).match(/^(?:\d+(?:\.\d{1,8})?|\.\d{1,8})/);
+  if(!match)throw new Error('Проверьте число или знак операции');
+  const literal=match[0];pos+=literal.length;
+  const [intPart,frac='']=literal.split('.');
+  return rational(BigInt((intPart||'0')+frac),10n**BigInt(frac.length));
+ }
+ function unary(){
+  if(source[pos]==='+'){pos++;return unary();}
+  if(source[pos]==='-'){pos++;const a=unary();return {n:-a.n,d:a.d};}
+  return primary();
+ }
+ function term(){let v=unary();while(source[pos]==='*'||source[pos]==='/'){const op=source[pos++];v=combine(v,unary(),op);}return v;}
+ function expression(){let v=term();while(source[pos]==='+'||source[pos]==='-'){const op=source[pos++];v=combine(v,term(),op);}return v;}
+ const result=expression();
+ if(pos!==source.length)throw new Error('Проверьте знаки и скобки в формуле');
+ const cents=result.n*100n/result.d; // BigInt делит к нулю: без округления вверх
+ if(cents>100000000000000n||cents < -100000000000000n)throw new Error('Слишком большая сумма');
+ return Number(cents)/100;
+}
+
+function makeRow(r){const tr=document.createElement('tr');tr.dataset.rowId=r.id;if(selectedRowIds.has(r.id))tr.classList.add('selected');const chkTd=document.createElement('td');chkTd.className='checkcell';const chk=document.createElement('input');chk.type='checkbox';chk.checked=selectedRowIds.has(r.id);chk.disabled=!canEdit();chk.setAttribute('aria-label','Выбрать строку для удаления');chk.onchange=()=>{if(chk.checked)selectedRowIds.add(r.id);else selectedRowIds.delete(r.id);tr.classList.toggle('selected',chk.checked);refreshBulkUi();};chkTd.appendChild(chk);tr.appendChild(chkTd);
+ for(const [key,cls,keyDict] of [['payment','c1','payments'],['source','c2','sources']]){const td=document.createElement('td');td.className='fixed '+cls;addSelect(td,r,key,dict[keyDict]);tr.appendChild(td);}
+ const ctd=document.createElement('td');ctd.className='fixed c3'+(cashFlowType(r)==='income'?' income-category':'');const picker=document.createElement('button');picker.type='button';picker.className='catpick'+(!r.category||![...dict.categories,...(dict.incomeCategories||[])].includes(r.category)?' missing':'');picker.disabled=!canEditCategory();picker.title=boot&&boot.user&&!boot.user.admin?'Статью ДДС назначает администратор':'Выбрать статью ДДС';let text=document.createElement('span');text.textContent=r.category||'Выберите статью ДДС';picker.appendChild(text);let arrow=document.createElement('b');arrow.textContent='⌄';picker.appendChild(arrow);picker.onclick=()=>openCategory(picker,r);ctd.appendChild(picker);tr.appendChild(ctd);
+ const dtd=document.createElement('td');dtd.className='fixed c4'+(r.reviewPending?' review-needed':'');const textarea=document.createElement('textarea');textarea.rows=2;textarea.placeholder='Название расхода';textarea.value=r.description||'';textarea.disabled=!canEdit();textarea.setAttribute('aria-label','Описание/название затрат');textarea.oninput=()=>{if(textarea.value!==r.description){r.reviewPending=true;dtd.classList.add('review-needed');if(!dtd.querySelector('.review-notice')){const note=document.createElement('span');note.className='review-notice';note.textContent='⚠ Требует проверки статьи ДДС';dtd.appendChild(note);}}r.description=textarea.value;queue(r,'description',r.description);};
+ dtd.appendChild(textarea);if(r.reviewPending){const note=document.createElement('span');note.className='review-notice';note.textContent='⚠ Описание изменено — проверьте статью ДДС';dtd.appendChild(note);}tr.appendChild(dtd);
+ const [y,m]=monthKey.split('-').map(Number);
+ for(let day=1;day<=numDays();day++){const td=document.createElement('td');const weekend=[0,6].includes(new Date(y,m-1,day).getDay());td.className='amount-cell'+(weekend?' weekend':'');const v=document.createElement('input');v.type='text';v.inputMode='decimal';v.className='amount';v.disabled=!canEdit();v.value=r.amounts&&r.amounts[day]!=null?fmt.format(r.amounts[day]):'';v.setAttribute('aria-label',day+'.'+m);
+ v.onfocus=()=>{if(r.formulas&&r.formulas[day])v.value=r.formulas[day];};
+ v.oninput=()=>{
+   if(v.value.trim().startsWith('=')){v.style.background='#eef4ff';v.title='Формула будет рассчитана после выхода из ячейки';return;}
+   const pos=v.selectionStart||0, before=v.value.substring(0,pos).replace(/\s/g,'');
+   const pretty=inputMoney(v.value);
+   if(pretty===null){v.style.background='#fff0f0';return;}
+   v.value=pretty;let count=0,p=0;
+   while(p<v.value.length&&count<before.length){if(v.value[p]!==' ')count++;p++;}
+   v.setSelectionRange(p,p);
+   const n=parseMoney(pretty);if(n===null){v.style.background='#fff0f0';return;}
+   v.style.background='';v.title='';
+   if(!r.amounts)r.amounts={};
+   if(n==='')delete r.amounts[day];else r.amounts[day]=n;
+   if(r.formulas&&r.formulas[day]){delete r.formulas[day];queue(r,'formula','',day);}
+   tr.querySelector('.money-total').textContent=money(rowSum(r));
+   queue(r,'amount',n,day);
+ };
+ v.onblur=()=>{
+   const source=v.value.trim();
+   if(source.startsWith('=')){
+     try{
+       const n=evaluateBudgetFormula(source);
+       if(!r.amounts)r.amounts={};if(!r.formulas)r.formulas={};
+       r.amounts[day]=n;r.formulas[day]=source;
+       v.style.background='';v.title='Формула: '+source;
+       v.value=fmt.format(truncateToKopecks(n));
+       tr.querySelector('.money-total').textContent=money(rowSum(r));
+       queue(r,'amount',n,day);queue(r,'formula',source,day);
+     }catch(e){v.style.background='#fff0f0';v.title='Ошибка формулы: '+e.message;status('Ошибка формулы: '+e.message,true);}
+     return;
+   }
+   const x=parseMoney(v.value);
+   if(x!==null)v.value=x===''?'':fmt.format(truncateToKopecks(x));
+ };
+ td.appendChild(v);updateAmountNoteMarker(td,r,day);td.oncontextmenu=e=>showCommentMenu(e,r,day,td);tr.appendChild(td);}
+ const total=document.createElement('td');total.className='money-total';total.textContent=money(rowSum(r));tr.appendChild(total);
+ const act=document.createElement('td');act.className='actioncell';const del=document.createElement('button');del.className='delete-row';del.title='Удалить строку из выбранного месяца';del.textContent='🗑 Удалить';del.disabled=!canEdit();del.onclick=()=>removeRow(r);act.appendChild(del);tr.appendChild(act);
+ return tr;}
+function renderRows(){tableHead();const body=$('ledgerBody');body.innerHTML='';const own=rows.filter(r=>r.department===dept);own.forEach(r=>body.appendChild(makeRow(r)));if(!own.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=numDays()+7;td.style.cssText='padding:26px;color:#8090a2;text-align:center';td.textContent='В этом отделе пока нет строк. Добавьте первую строку.';tr.appendChild(td);body.appendChild(tr);}
+ departmentOptions();refreshBulkUi();renderDeptSummary();}
+function openCategory(button,row){catTarget={button,row};const panel=$('catPanel'),r=button.getBoundingClientRect(),left=Math.min(r.left,window.innerWidth-345);panel.style.left=Math.max(10,left)+'px';panel.style.top=Math.min(r.bottom+4,window.innerHeight-350)+'px';panel.classList.remove('hidden');$('catSearch').value='';renderCategoryOptions();$('catSearch').focus();}
+function closeCategory(){catTarget=null;$('catPanel').classList.add('hidden');}
+function renderCategoryOptions(){
+ if(!catTarget)return;
+ const term=$('catSearch').value.trim().toLocaleLowerCase('ru');
+ const choices=[...(dict.categories||[]).map(name=>({name,type:'expense'})),
+   ...(boot.user.admin?(dict.incomeCategories||[]).map(name=>({name,type:'income'})):[])];
+ const row=catTarget.row;
+ if(row.category&&!choices.some(c=>c.name===row.category&&c.type===cashFlowType(row)))choices.unshift({name:row.category,type:cashFlowType(row)});
+ const values=[{name:'',type:'expense'},...choices.filter(c=>(c.name+' '+(c.type==='income'?'поступление':'списание')).toLocaleLowerCase('ru').includes(term))];
+ const target=$('catOptions');target.innerHTML='';
+ values.forEach(item=>{
+   const btn=document.createElement('button');
+   if(item.type==='income')btn.classList.add('income-option');
+   btn.textContent=item.name?(item.type==='income'?'↙ Поступление · ':'↗ Списание · ')+item.name:'— Без статьи —';
+   btn.onclick=()=>{
+     const {row,button}=catTarget;
+     row.category=item.name;row.cashFlowType=item.type;
+     button.querySelector('span').textContent=item.name||'Выберите статью ДДС';
+     button.classList.toggle('missing',!item.name);
+     const cell=button.closest('td');if(cell)cell.classList.toggle('income-category',item.type==='income'&&!!item.name);
+     queue(row,'category',item.name,undefined,undefined,item.type);
+     closeCategory();
+   };
+   target.appendChild(btn);
+ });
+}
+function queue(row,field,value,day,noteAction,categoryType){
+ const key=row.id+'|'+field+'|'+(day||'')+(field==='note'&&noteAction==='append'?'|'+genId():'');
+ pending.set(key,{rowId:row.id,department:row.department,field,value,day:day||undefined,noteAction:noteAction||undefined,categoryType:categoryType||undefined});
+ saveError=false;status('Ожидает автосохранения…');
+ clearTimeout(timer);timer=setTimeout(flush,field==='description'?850:420);
+}
+function flush(){
+ clearTimeout(timer);if(saving||!pending.size)return;
+ const batch=[...pending.entries()],savingKey=monthKey;
+ pending.clear();saving=true;status('Сохраняется…');
+ call('wlPatchChanges',savingKey,batch.map(x=>x[1])).then(()=>{
+  saving=false;saveRetries=0;saveError=false;
+  const savedIds=new Set(batch.map(x=>String(x[1].rowId)));
+  rows.forEach(r=>{if(savedIds.has(String(r.id)))r._persisted=true;});
+  if(savingKey===monthKey)refreshCurrentCachedMonth();bddsData=null;
+  renderDeptSummary();if(activeTab==='ЦФО')renderSummary();
+  if(boot.user.admin&&batch.some(x=>x[1].field==='description'))refreshReviewCount();
+  if(pending.size){status('Ещё есть изменения…');flush();}
+  else {status('Сохранено ✓');if(queuedMonth){const next=queuedMonth;queuedMonth=null;changeMonth(next);}}
+ }).catch(e=>{
+  saving=false;
+  for(const [k,p] of batch)if(!pending.has(k))pending.set(k,p);
+  const msg=String((e&&e.message)||e);
+  if(msg.includes('SERVER_BUSY_RETRY')){
+    saveRetries++;
+    const delay=Math.min(5000,300*Math.pow(2,Math.min(saveRetries,4)))+Math.floor(Math.random()*250);
+    status('Сервер занят. Изменения сохранены на экране, повтор через '+Math.ceil(delay/1000)+' сек…');
+    clearTimeout(timer);timer=setTimeout(flush,delay);
+  }else{
+    saveError=true;status('Ошибка сохранения: '+msg+' — нажмите для повтора',true);
+  }
+ });
+}
+function loadMonth(){
+ loading=true;const version=++loadVersion,key=monthKey,startTime=performance.now();
+ hideError();periodStatus();
+ const cached=monthCache.get(key);
+ rows=cached?JSON.parse(JSON.stringify(cached.rows)):[];
+ renderRows();status(cached?'Показываем данные, проверяем обновления…':'Загрузка…');
+ call('wlGetMonth',key).then(result=>{
+   if(version!==loadVersion)return;
+   rows=result.rows||[];closed=result.month.status==='Закрыт';
+   loading=false;periodStatus();rememberMonth(key,result);
+   renderRows();renderSummary();status('Сохранено ✓');
+   console.info('WL_PERF month UI '+key+' '+Math.round(performance.now()-startTime)+'ms');
+ }).catch(e=>{if(version!==loadVersion)return;loading=false;showError(e);status('Ошибка загрузки — данные не обновлены',true);});
+}
+function removeRow(r){
+ if(!canEdit())return;
+ if(saving){alert('Идёт сохранение. Повторите удаление после надписи «Сохранено».');return;}
+ if(!confirm('Удалить строку «'+(r.description||r.category||'Без названия')+'» из '+monthLabel(monthKey)+'? Пустые автоматические копии в будущих месяцах также удалятся. Заполненные и закрытые месяцы сохранятся.'))return;
+ if(pending.size&&[...pending.keys()].some(k=>!k.startsWith(r.id+'|'))){alert('Сначала дождитесь сохранения остальных изменений.');flush();return;}
+ if(r._persisted===false){for(const k of [...pending.keys()])if(k.startsWith(r.id+'|'))pending.delete(k);}
+ if(pending.size){alert('Сначала дождитесь сохранения изменений в этой строке.');flush();return;}
+ if(r._persisted===false){rows=rows.filter(x=>x.id!==r.id);refreshCurrentCachedMonth();renderRows();renderSummary();status('Несохранённая строка убрана');return;}
+ status('Удаляем строку…');
+ call('wlDeleteRow',monthKey,r.id).then(res=>{bddsData=null;rows=rows.filter(x=>x.id!==r.id);refreshCurrentCachedMonth();renderRows();renderSummary();renderDeptSummary();status('Строка удалена · перенесённых пустых копий: '+(res.propagated||0)+' · восстановление в Корзине');}).catch(e=>{showError(e);status('Ошибка удаления',true);});
+}
+function addRow(){if(!canEdit())return;const r={id:genId(),department:dept,payment:'',source:'',category:'',description:'',amounts:{},_persisted:false};rows.push(r);renderRows();queue(r,'description','');}
+function categoryText(category){return category||'⚠ Без статьи ДДС';}
+function cashFlowType(row){
+ if(row.cashFlowType==='income')return 'income';
+ if(row.cashFlowType==='expense')return 'expense';
+ const category=String(row.category||'');
+ return (dict.incomeCategories||[]).includes(category)&&!(dict.categories||[]).includes(category)?'income':'expense';
+}
+function grouped(rowsIn){
+ const mp=new Map();
+ for(const r of rowsIn){
+  const type=cashFlowType(r),cat=categoryText(r.category),key=type+'|'+cat;
+  if(!mp.has(key))mp.set(key,{name:cat,type,byDept:{},byDay:{},total:0});
+  const x=mp.get(key);
+  for(const [day,val] of Object.entries(r.amounts||{})){
+   const num=Number(val)||0;x.total+=num;
+   x.byDept[r.department]=(x.byDept[r.department]||0)+num;
+   x.byDay[day]=(x.byDay[day]||0)+num;
+  }
+ }
+ return [...mp.values()].filter(v=>v.total!==0).sort((a,b)=>a.name.localeCompare(b.name,'ru'));
+}
+function groupedSections(list){
+ return [{type:'income',title:'ПОСТУПЛЕНИЯ',sumTitle:'Итого поступления'},{type:'expense',title:'СПИСАНИЯ',sumTitle:'Итого списания'}].map(section=>({
+  ...section,items:list.filter(v=>v.type===section.type),total:list.filter(v=>v.type===section.type).reduce((sum,v)=>sum+v.total,0)
+ }));
+}
+function renderDeptSummary(){
+ const sections=groupedSections(grouped(rows.filter(r=>r.department===dept)));
+ const parts=[];
+ sections.forEach(s=>{
+  if(!s.items.length)return;
+  parts.push('<tr class="sum-section"><td colspan="2">'+s.title+'</td></tr>');
+  s.items.forEach(x=>parts.push('<tr><td class="catcol">'+esc(x.name)+'</td><td class="num">'+money(x.total)+'</td></tr>'));
+  parts.push('<tr class="sum-subtotal"><td class="catcol">'+s.sumTitle+'</td><td class="num">'+money(s.total)+'</td></tr>');
+ });
+ $('deptSummaryBody').innerHTML=parts.join('');
+}
+function setDeptMode(mode){deptMode=mode;$('deptExpenses').classList.toggle('hidden',mode!=='expenses');$('deptSummary').classList.toggle('hidden',mode!=='summary');$('deptExpensesBtn').classList.toggle('active',mode==='expenses');$('deptSummaryBtn').classList.toggle('active',mode==='summary');if(mode==='summary')renderDeptSummary();}
+const dictLabels={departments:'Отделы',payments:'Как платим?',sources:'Откуда платим?',categories:'Статьи списаний',incomeCategories:'Статьи поступлений · только админ'};
+function renderDictionaries(){const root=$('dictCards');root.innerHTML='';Object.keys(dictLabels).filter(k=>k!=='incomeCategories'||boot.user.admin).forEach(key=>{const vals=key==='departments'?boot.user.admin?dict.departments.map(d=>d.name):boot.user.view:dict[key];const div=document.createElement('div');div.className='dictcard';const h=document.createElement('h3');h.textContent=dictLabels[key]+' · '+vals.length;div.appendChild(h);const list=document.createElement('div');list.className='dictionary-items';vals.forEach(v=>{const chip=document.createElement('div');chip.className='chip';const name=document.createElement('span');name.textContent=v;chip.appendChild(name);if(boot.user.admin){const x=document.createElement('button');x.className='del';x.title='Удалить';x.textContent='×';x.onclick=()=>{if(!confirm('Удалить «'+v+'» из справочника?'))return;call('wlDictionaryRemove',key,v).then(updateDict).catch(showError);};chip.appendChild(x);}list.appendChild(chip);});div.appendChild(list);if(boot.user.admin){const form=document.createElement('div');form.className='row';const input=document.createElement('input');input.className='input';input.placeholder='Новый пункт';input.style.flex='1';input.style.minWidth='180px';const button=document.createElement('button');button.className='btn primary';button.textContent='+ Добавить';button.onclick=()=>{call('wlDictionaryAdd',key,input.value).then(out=>{input.value='';updateDict(out);}).catch(showError);};form.append(input,button);div.appendChild(form);}root.appendChild(div);});}
+function updateDict(data){const preserve=dept;dict={...dict,...data};boot.user.view=boot.user.admin?dict.departments.map(d=>d.name):boot.user.view.filter(d=>dict.departments.some(o=>o.name===d));boot.user.edit=boot.user.admin?boot.user.view:boot.user.edit;dept=preserve;departmentOptions();renderRows();renderDictionaries();}
+function loadSettings(){if(!boot.user.admin)return;call('wlGetSettings').then(result=>{settings=result;renderSettings();}).catch(showError);loadTrash();loadReviews();}
+function loadReviews(){
+ if(!boot||!boot.user.admin)return;
+ $('reviewStatus').textContent='Загрузка…';call('wlReviewList').then(items=>{
+   reviewCount=items.length;tabs();$('reviewCount').textContent=String(items.length);
+   $('reviewStatus').textContent=items.length?'Нужно проверить '+items.length+' строк':'Новых изменений нет';
+   const root=$('reviewList');root.innerHTML='';
+   items.forEach(item=>{
+     const card=document.createElement('div');card.className='review-list-item';
+     const heading=document.createElement('strong');heading.textContent=monthLabel(item.key)+' · '+item.department+(item.monthClosed?' · Месяц закрыт':'');card.appendChild(heading);
+     const detail=document.createElement('div');detail.className='review-detail';detail.textContent='Было: '+(item.previous||'—')+' | Стало: '+(item.description||'—')+' | Изменил: '+(item.by||'неизвестно');card.appendChild(detail);
+     const line=document.createElement('div');line.className='row';
+     const label=document.createElement('span');label.textContent='Проверить статью ДДС:';line.appendChild(label);
+     const select=document.createElement('select');select.className='input';
+     const empty=document.createElement('option');empty.value='';empty.textContent='— Выберите статью ДДС —';select.appendChild(empty);
+     [...(dict.categories||[]).map(v=>({name:v,type:'expense'})),...(dict.incomeCategories||[]).map(v=>({name:v,type:'income'}))].forEach(v=>{const opt=document.createElement('option');opt.value=v.type+'|'+v.name;opt.textContent=(v.type==='income'?'Поступление: ':'Списание: ')+v.name;select.appendChild(opt);});
+     const selectedType=item.cashFlowType==='income'?'income':'expense';
+     select.value=selectedType+'|'+item.category;select.disabled=item.monthClosed;line.appendChild(select);
+     const button=document.createElement('button');button.className='btn primary small';button.textContent='✓ Подтвердить';button.disabled=item.monthClosed||!select.value;
+     select.onchange=()=>{button.disabled=item.monthClosed||!select.value;};
+     button.onclick=()=>{if(saving||pending.size){alert('Дождитесь завершения автосохранения');return;}button.disabled=true;call('wlReviewResolve',item.key,item.id,select.value.slice(select.value.indexOf('|')+1),select.value.split('|')[0]).then(()=>{loadReviews();if(monthKey===item.key)loadMonth();}).catch(e=>{button.disabled=false;showError(e);});};line.appendChild(button);card.appendChild(line);root.appendChild(card);
+   });
+ }).catch(e=>{$('reviewStatus').textContent='Ошибка: '+(e.message||e);});
+}
+function renderSettings(){const body=$('accessList');body.innerHTML='';const table=document.createElement('table');table.className='access-table';const head=document.createElement('thead');head.innerHTML='<tr><th>ФИО</th><th>Email</th><th>Роль</th><th>Действия</th></tr>';table.appendChild(head);const tbody=document.createElement('tbody');settings.rules.forEach(rule=>{const tr=document.createElement('tr');const fullName=document.createElement('td');fullName.textContent=rule.name||'—';const td=document.createElement('td');td.style.overflowWrap='anywhere';td.textContent=rule.email;const role=document.createElement('td');role.textContent=rule.role==='admin'?'Администратор':'Сотрудник';const act=document.createElement('td');const edit=document.createElement('button');edit.className='btn small';edit.textContent='Настроить';edit.onclick=()=>chooseRule(rule);act.appendChild(edit);if(rule.email!==boot.user.email){const del=document.createElement('button');del.className='btn danger small';del.textContent='×';del.title='Удалить доступ';del.onclick=()=>{if(confirm('Отозвать доступ у '+rule.email+'?'))call('wlRemoveAccess',rule.email).then(x=>{settings=x;renderSettings();}).catch(showError);};act.appendChild(del);}tr.append(fullName,td,role,act);tbody.appendChild(tr);});table.appendChild(tbody);body.appendChild(table);renderAccessGrid(settings.departments);renderTabAccessGrid(settings.tabs||TABS);if(!document.activeElement||document.activeElement.id!=='accessEmail')chooseRule(settings.rules.find(x=>x.email===boot.user.email)||null);$('spreadsheetLink').innerHTML='Таблица хранения данных: <a href="'+esc(settings.spreadsheetUrl)+'" target="_blank" rel="noopener">открыть Google Sheets</a>';}
+function renderAccessGrid(deps){const grid=$('accessGrid');grid.innerHTML='';deps.forEach(name=>{const label=document.createElement('label');label.title=name;const view=document.createElement('input');view.type='checkbox';view.className='viewopt';view.dataset.dept=name;const txt=document.createElement('span');txt.textContent=name;const e=document.createElement('input');e.type='checkbox';e.className='editopt';e.dataset.dept=name;e.title='Может изменять';view.onchange=()=>{if(!view.checked)e.checked=false;};e.onchange=()=>{if(e.checked)view.checked=true;};label.append(view,txt,e);grid.appendChild(label);});}
+function renderTabAccessGrid(tabNames){
+ const grid=$('tabAccessGrid');grid.innerHTML='';
+ tabNames.filter(name=>name!=='ФинТабло').forEach(name=>{const label=document.createElement('label');
+ const view=document.createElement('input');view.type='checkbox';view.className='tab-viewopt';view.dataset.tab=name;
+ const title=document.createElement('span');title.className='tab-name';title.textContent=name;
+ const edit=document.createElement('input');edit.type='checkbox';edit.className='tab-editopt';edit.dataset.tab=name;edit.title='Разрешено изменение раздела';
+ // Все кроме «Отделы» остаются доступными сотруднику только для чтения.
+ if(name!=='Отделы'){edit.disabled=true;edit.classList.add('hidden');}
+ view.onchange=()=>{if(!view.checked)edit.checked=false;};edit.onchange=()=>{if(edit.checked)view.checked=true;};
+ const text=document.createElement('small');text.textContent=name==='Отделы'?'Изменять':'Только просмотр';
+ label.append(view,title,edit,text);grid.appendChild(label);
+ });
+}
+function chooseRule(rule){$('accessName').value=rule?rule.name||'':'';$('accessEmail').value=rule?rule.email:'';$('accessRole').value=rule?rule.role:'user';updateRoleVisibility();$('accessEnabled').checked=rule?rule.enabled:true;document.querySelectorAll('#accessGrid .viewopt').forEach(el=>{el.checked=rule&&((rule.role==='admin')||rule.view.includes(el.dataset.dept));});document.querySelectorAll('#accessGrid .editopt').forEach(el=>{el.checked=rule&&((rule.role==='admin')||rule.edit.includes(el.dataset.dept));});
+ document.querySelectorAll('#tabAccessGrid .tab-viewopt').forEach(el=>{el.checked=rule?((rule.role==='admin')||rule.tabs.includes(el.dataset.tab)):(['Отделы','Инструкция'].includes(el.dataset.tab));});
+ document.querySelectorAll('#tabAccessGrid .tab-editopt').forEach(el=>{el.checked=rule?((rule.role==='admin')||rule.tabEdit.includes(el.dataset.tab)):(el.dataset.tab==='Отделы');});
+}
+function saveRule(){const access={name:$('accessName').value,email:$('accessEmail').value,role:$('accessRole').value,enabled:$('accessEnabled').checked,view:[],edit:[],tabs:[],tabEdit:[]};
+ document.querySelectorAll('#accessGrid .viewopt').forEach(el=>{if(el.checked)access.view.push(el.dataset.dept);});
+ document.querySelectorAll('#accessGrid .editopt').forEach(el=>{if(el.checked)access.edit.push(el.dataset.dept);});
+ document.querySelectorAll('#tabAccessGrid .tab-viewopt').forEach(el=>{if(el.checked)access.tabs.push(el.dataset.tab);});
+ document.querySelectorAll('#tabAccessGrid .tab-editopt').forEach(el=>{if(el.checked)access.tabEdit.push(el.dataset.tab);});
+ $('accessStatus').textContent='Сохраняем…';call('wlSaveAccess',access).then(x=>{settings=x;renderSettings();$('accessStatus').textContent='Сохранено ✓';}).catch(e=>{$('accessStatus').textContent='Ошибка: '+(e.message||e);});}
+function manageMonth(action,key){if(pending.size||saving){alert('Дождитесь завершения автосохранения.');return;}call('wlMonthManage',action,key).then(result=>{monthCache.delete(key);months=result;if(!months.some(m=>m.key===monthKey))monthKey=months[months.length-1].key;selectMonths();renderYearOptions();loadMonth();}).catch(showError);}
+let ftPreviewState=null;
+function ftStatus(value){$('ftTokenStatus').textContent=value;}
+function renderYearOptions(){const years=[...new Set(months.map(m=>m.key.slice(0,4)))].sort();$('yearCloseSelect').innerHTML=years.map(y=>'<option value="'+y+'">'+y+'</option>').join('');$('yearCloseSelect').value=monthKey.slice(0,4);}
+function yearAction(action){const year=$('yearCloseSelect').value;if(!/^\d{4}$/.test(year))return;
+ const word=action==='close'?'ЗАКРЫТЬ':'ОТКРЫТЬ';if(prompt('Для подтверждения введите '+word+' '+year) !==word+' '+year)return;
+ $('yearStatus').textContent='Выполняется…';call('wlYearManage',action,year).then(result=>{months=result.months;monthCache.clear();selectMonths();renderYearOptions();$('yearCloseSelect').value=year;loadMonth();$('yearStatus').textContent=(action==='close'?'Год закрыт':'Год открыт')+' ✓';}).catch(e=>{$('yearStatus').textContent='Ошибка: '+(e.message||e);showError(e);});}
+function ftCheck(){
+ const b=$('ftCheck');b.disabled=true;$('ftApply').disabled=true;ftPreviewState=null;
+ $('ftPreview').textContent='Получаем статьи из ФинТабло (только чтение)…';
+ call('wlFinTabloPreview').then(result=>{
+  ftPreviewState=result;const root=$('ftPreview');root.innerHTML='';
+  const summary=document.createElement('p');summary.textContent='ФинТабло: '+result.outcomeCount+' списаний, '+result.incomeCount+' поступлений. Архивных: '+result.archivedCount+', головных: '+result.parentCount+'. Изменений к согласованию: '+result.changes.length+'.';root.appendChild(summary);
+  const blockers=result.warnings.filter(w=>!w.startsWith('Совпадающие названия разных статей.'));
+  if(result.warnings.length){const warning=document.createElement('p');warning.style.color=blockers.length?'#ad3434':'#945c15';warning.textContent='Требуют проверки: '+result.warnings.join('; ')+(blockers.length?' · Применение временно заблокировано':'');root.appendChild(warning);}
+  result.blocked=!!blockers.length;
+  const instruction=document.createElement('p');instruction.textContent='Отметьте галочками только те изменения, которые хотите подтвердить. Неотмеченные статьи останутся как есть.';root.appendChild(instruction);
+  if(!result.changes.length){const p=document.createElement('p');p.textContent='Наш справочник уже совпадает с ФинТабло.';root.appendChild(p);return;}
+  const table=document.createElement('table');table.className='ft-review';
+  table.innerHTML='<thead><tr><th style="width:55px">✓</th><th>Статья</th><th style="width:140px">Тип</th><th style="width:130px">Действие</th></tr></thead>';
+  const body=document.createElement('tbody');
+  result.changes.forEach(item=>{
+    const row=document.createElement('tr');row.className=(item.type==='income'?'ft-income ':'')+(item.action==='remove'?'ft-remove':'');
+    const td=document.createElement('td'),cb=document.createElement('input');cb.type='checkbox';cb.className='ft-change-check';cb.value=item.key;cb.onchange=updateFinTabloApprovalCount;td.appendChild(cb);
+    const name=document.createElement('td');name.textContent=item.name+(item.used?' · используется в старых бюджетах':'');
+    const type=document.createElement('td');type.textContent=item.type==='income'?'Поступление':'Списание';
+    const action=document.createElement('td');action.textContent=item.action==='add'?'Добавить':'Исключить из выбора';
+    row.append(td,name,type,action);body.appendChild(row);
+  });table.appendChild(body);root.appendChild(table);updateFinTabloApprovalCount();
+ }).catch(e=>{$('ftPreview').textContent='Проверка не выполнена: '+(e.message||e);}).finally(()=>b.disabled=false);
+}
+function updateFinTabloApprovalCount(){const n=document.querySelectorAll('.ft-change-check:checked').length;$('ftApply').disabled=!n||!!(ftPreviewState&&ftPreviewState.blocked);$('ftApply').textContent='Применить выбранные ('+n+')';}
+function ftApply(){
+ if(!ftPreviewState)return;
+ const selected=[...document.querySelectorAll('.ft-change-check:checked')].map(el=>el.value);
+ if(!selected.length)return;
+ if(!confirm('Применить '+selected.length+' отмеченных изменений ТОЛЬКО в справочнике нашего проекта? В ФинТабло ничего не изменится.'))return;
+ const b=$('ftApply');b.disabled=true;ftStatus('Применяем подтверждённые статьи…');
+ call('wlFinTabloApplySelected',ftPreviewState.remoteHash,ftPreviewState.localHash,selected).then(out=>{
+  ftStatus('Применено ✓ · '+out.applied+' изменений. Поступлений: '+out.incomes+', списаний: '+out.expenses+'.');
+  ftPreviewState=null;$('ftPreview').textContent='Изменения применены. Для повторной проверки нажмите «Получить статьи». ';
+  return call('wlBoot').then(data=>{boot=data;dict=data.dict;months=data.months;monthKey=months.some(m=>m.key===monthKey)?monthKey:data.current;selectMonths();updateDict(dict);loadMonth();});
+ }).catch(e=>{ftStatus('Ошибка: '+(e.message||e));showError(e);}).finally(()=>b.disabled=false);
+}
+function showYearArchives(){
+ if(!boot||!boot.user.admin)return;
+ call('wlYearArchiveStatus').then(result=>{
+  const root=$('yearArchiveLinks');root.innerHTML='';
+  result.archives.forEach(item=>{
+   if(!item.detail)return;
+   let data;try{data=JSON.parse(item.detail);}catch(_){return;}
+   const link=document.createElement('a');link.href=data.url;link.target='_blank';link.rel='noopener noreferrer';
+   link.textContent='Архив '+item.year+' ('+data.rows+' строк)';link.style.marginRight='16px';root.appendChild(link);
+  });
+  if(result.automationEnabled){const text=document.createElement('span');text.textContent='· Автоархив включён';root.appendChild(text);}
+  if(!result.archives.some(item=>item.detail)){
+    const empty=document.createElement('p');empty.className='subtle';
+    empty.textContent='Архивы завершённых лет ещё не созданы. Архив выбранного года можно сформировать после завершения этого года.';
+    root.appendChild(empty);
+  }
+  if(result.authorizationRequired){
+    const note=document.createElement('p');note.className='archive-help';
+    note.textContent='Архивы доступны. Для автоматического создания архива необходимо один раз разрешить управление триггерами: в редакторе Apps Script выполните функцию wlAuthorizeYearArchive и подтвердите доступ Google. После этого нажмите «Включить автоархивирование». Это не нужно для обычного просмотра бюджетов.';
+    root.appendChild(note);
+  }
+ }).catch(e=>{$('yearArchiveStatus').textContent='Ошибка получения архива: '+(e.message||e);});
+}
+function yearArchiveAction(){
+ const year=$('yearCloseSelect').value;if(!year)return;
+ if(!confirm('Создать отдельную Google-таблицу с полным архивом '+year+' года? Исходные данные останутся без изменений.'))return;
+ const b=$('yearArchiveButton');b.disabled=true;$('yearArchiveStatus').textContent='Создаём архив…';
+ call('wlYearArchiveSnapshot',year,false).then(r=>{$('yearArchiveStatus').textContent=r.alreadyExisted?'Архив уже существует':'Архив создан: '+r.rows+' строк';showYearArchives();}).catch(e=>{$('yearArchiveStatus').textContent='Ошибка: '+(e.message||e);}).finally(()=>b.disabled=false);
+}
+function enableYearArchive(){
+ if(!confirm('Включить ежедневную проверку для автоматического создания архива завершённого года после 1 января?'))return;
+ const b=$('enableAnnualArchive');b.disabled=true;
+ call('wlEnableAnnualArchive').then(()=>{$('yearArchiveStatus').textContent='Автоархивирование включено ✓';showYearArchives();}).catch(e=>{$('yearArchiveStatus').textContent='Ошибка: '+(e.message||e);}).finally(()=>b.disabled=false);
+}
+function wire(){
+ $('yearArchiveButton').onclick=()=>yearArchiveAction();
+ $('enableAnnualArchive').onclick=()=>enableYearArchive();
+  $('yearCloseButton').onclick=()=>yearAction('close');
+ $('yearReopenButton').onclick=()=>yearAction('open');
+ $('ftSaveToken').onclick=()=>{const input=$('ftApiToken');if(!input.value.trim())return ftStatus('Введите ключ');const val=input.value;input.value='';call('wlFinTabloSetToken',val).then(()=>ftStatus('Ключ сохранён. В коде и браузере он не отображается.')).catch(e=>ftStatus('Ошибка: '+(e.message||e)));};
+ $('ftCheck').onclick=ftCheck;$('ftApply').onclick=ftApply;
+ $('downloadExcelTemplate').onclick=downloadExcelTemplate;
+ $('exportDept').onclick=downloadDepartmentBudget;
+ $('amountNoteSave').onclick=()=>saveAmountNote($('amountNoteText').value);
+ $('amountNoteRemove').onclick=()=>{if(confirm('Удалить все комментарии к этой сумме?'))saveAmountNote('',true);};
+ $('amountNoteCancel').onclick=closeAmountNote;
+ $('amountNoteText').oninput=()=>{};
+ $('amountNoteText').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();saveAmountNote($('amountNoteText').value);}};
+ $('amountNoteOverlay').onclick=e=>{if(e.target===$('amountNoteOverlay'))closeAmountNote();};
+ $('openAmountComments').onclick=()=>{if(commentMenuTarget){const t=commentMenuTarget;openAmountNote(t.row,t.day,t.cell);}};
+ document.addEventListener('click',e=>{if(commentMenuTarget&&!$('amountCommentMenu').contains(e.target))closeCommentMenu();});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&noteTarget)closeAmountNote();if(e.key==='Escape'&&bddsCommentTarget)bddsCloseComment();});
+ $('monthSelect').onchange=e=>changeMonth(e.target.value);$('prev').onclick=()=>shiftMonth(-1);$('next').onclick=()=>shiftMonth(1);$('addRow').onclick=addRow;
+ $('departmentSelect').onchange=e=>{selectedRowIds.clear();dept=e.target.value;departmentOptions();renderRows();};$('saveStatus').onclick=()=>{if(saveError)flush();};
+ $('deptExpensesBtn').onclick=()=>setDeptMode('expenses');$('deptSummaryBtn').onclick=()=>setDeptMode('summary');
+ $('cfoFold').onclick=()=>{cfoCollapsed=!cfoCollapsed;renderSummary();};$('cfoFoldDepartments').onclick=()=>{cfoDepartmentsCollapsed=!cfoDepartmentsCollapsed;renderSummary();};$('bddsFold').onclick=()=>{bddsCollapsed=!bddsCollapsed;renderBddsView();};$('bddsRefresh').onclick=()=>{bddsData=null;renderBdds(true);};$('bddsYearSelect').onchange=()=>{bddsYear=$('bddsYearSelect').value;bddsExpandedMonths=new Set(monthKey.startsWith(bddsYear)?[monthKey]:[]);renderBdds();};
+ $('bddsFoldMonths').onclick=()=>{const d=[...document.querySelectorAll('#bddsHead [data-expand-month]')].map(x=>x.dataset.expandMonth);bddsExpandedMonths=d.length&&d.every(m=>bddsExpandedMonths.has(m))?new Set():new Set(d);renderBddsView();};
+ $('bddsFetchFact').onclick=bddsLoadFact;
+ $('bddsCommentSave').onclick=bddsSaveComment;$('bddsCommentCancel').onclick=bddsCloseComment;
+ $('bddsCommentOverlay').onclick=e=>{if(e.target===$('bddsCommentOverlay'))bddsCloseComment();};
+ $('bddsCommentText').onkeydown=e=>{if(e.key==='Enter'&&(e.ctrlKey||e.metaKey)){e.preventDefault();bddsSaveComment();}};
+ $('bddsHead').onclick=e=>{const el=e.target.closest('[data-expand-month]');if(!el)return;const m=el.dataset.expandMonth;if(bddsExpandedMonths.has(m))bddsExpandedMonths.delete(m);else bddsExpandedMonths.add(m);renderBddsView();};
+ $('bddsBody').onclick=e=>{const el=e.target.closest('[data-comment-key]');if(el)bddsOpenComment(el.dataset.commentMonth,decodeURIComponent(el.dataset.commentKey));};$('summaryMonthly').onclick=()=>{summaryMode='monthly';renderSummary();};$('summaryDaily').onclick=()=>{summaryMode='daily';renderSummary();};
+ $('catSearch').oninput=renderCategoryOptions;document.addEventListener('click',e=>{if(catTarget&&!$('catPanel').contains(e.target)&&!catTarget.button.contains(e.target))closeCategory();});document.addEventListener('keydown',e=>{if(e.key==='Escape')closeCategory();});
+ $('addMonthBtn').onclick=()=>{const value=prompt('Введите новый месяц в формате ГГГГ-ММ (например, 2028-01):');if(value&&/^\d{4}-(0[1-9]|1[0-2])$/.test(value))manageMonth('add',value);else if(value)alert('Неверный формат. Пример: 2028-01');};
+ $('closeMonthBtn').onclick=()=>{const action=closed?'open':'close';if(confirm((closed?'Открыть':'Закрыть')+' '+monthLabel(monthKey)+' для редактирования?'))manageMonth(action,monthKey);};
+ $('saveAccess').onclick=saveRule;$('loadTrash').onclick=loadTrash;$('enableMonthlyAudit').onclick=()=>{const b=$('enableMonthlyAudit');b.disabled=true;$('auditStatus').textContent='Включаем…';call('wlEnableMonthlyAuditArchive').then(()=>{$('auditStatus').textContent='Ежемесячная архивация включена ✓';}).catch(e=>{b.disabled=false;$('auditStatus').textContent='Ошибка: '+(e.message||e);});};$('loadReviews').onclick=loadReviews;$('bulkDelete').onclick=bulkDeleteRows;$('purgeSelectedTrash').onclick=purgeSelectedTrash;$('restoreSelectedTrash').onclick=restoreSelectedTrash;$('excelFile').onchange=e=>{importPrepared=null;$('confirmExcel').disabled=true;$('uploadExcel').disabled=!e.target.files.length;importFileName=e.target.files.length?e.target.files[0].name:'';$('importPreview').textContent=importFileName||'Файл ещё не выбран.';};$('uploadExcel').onclick=prepareExcelImport;$('confirmExcel').onclick=uploadExcelImport;$('accessRole').onchange=updateRoleVisibility;$('summarySearch').oninput=e=>{summaryText=e.target.value.toLocaleLowerCase('ru').trim();renderSummary();};$('summaryDept').onchange=e=>{summaryDepartment=e.target.value;renderSummary();};
+ window.addEventListener('beforeunload',e=>{if(saving||pending.size){e.preventDefault();e.returnValue='';}});
+}
+function start(){wire();function updateSticky(){const h=document.querySelector('header'),t=document.querySelector('#deptView>.toolbar');if(h)document.documentElement.style.setProperty('--wl-header-height',h.offsetHeight+'px');if(t)document.documentElement.style.setProperty('--wl-toolbar-height',t.offsetHeight+'px');}updateSticky();window.addEventListener('resize',updateSticky);if(typeof ResizeObserver!=='undefined'){const ro=new ResizeObserver(updateSticky);ro.observe(document.querySelector('header'));ro.observe(document.querySelector('#deptView>.toolbar'));}call('wlBoot').then(data=>{boot=data;months=data.months||[];dict=data.dict||dict;monthKey=nearestAvailableCurrentMonth(months,data.current);bddsYear=monthKey.slice(0,4);bddsExpandedMonths=new Set([monthKey]);dept=boot.user.view[0]||'';$('summaryDept').innerHTML='<option value="">Все доступные отделы</option>'+boot.user.view.map(d=>'<option value="'+esc(d)+'">'+esc(d)+'</option>').join('');if(!months.length)throw Error('Нет доступных месяцев');renderYearOptions();if(!boot.user.tabs.includes(activeTab))activeTab=boot.user.tabs[0]||'Инструкция';document.querySelectorAll('.admin-only').forEach(n=>n.classList.toggle('hidden',!boot.user.admin));if(!boot.user.admin)$('settingsView').classList.add('hidden');selectMonths();tabs();views();if(boot.user.tabs.includes('Отделы')||boot.user.tabs.includes('ЦФО'))loadMonth();else if(boot.user.tabs.includes('БДДС'))renderBdds();else status('Доступ к разделам бюджета не предоставлен');refreshReviewCount();}).catch(e=>{$('deptView').classList.add('hidden');showError(e);});}
+
+function refreshBulkUi(){
+ const own=rows.filter(r=>r.department===dept),ids=new Set(own.map(r=>r.id));
+ for(const id of [...selectedRowIds])if(!ids.has(id))selectedRowIds.delete(id);
+ const selected=own.filter(r=>selectedRowIds.has(r.id)).length;
+ $('selectedCount').textContent=selected+' выбрано';$('bulkDelete').disabled=!selected||!canEdit();
+ const all=$('selectAllRows');if(all){all.checked=!!own.length&&selected===own.length;all.indeterminate=selected>0&&selected<own.length;all.disabled=!own.length||!canEdit();}
+}
+function setAllRows(flag){
+ rows.filter(r=>r.department===dept).forEach(r=>{if(flag)selectedRowIds.add(r.id);else selectedRowIds.delete(r.id);});renderRows();
+}
+function bulkDeleteRows(){
+ if(!canEdit())return;
+ const chosen=rows.filter(r=>r.department===dept&&selectedRowIds.has(r.id));if(!chosen.length)return;
+ if(saving||pending.size){alert('Есть несохранённые изменения. Дождитесь надписи «Сохранено ✓» и повторите удаление.');flush();return;}
+ if(!confirm('Удалить '+chosen.length+' строк из '+dept+' за '+monthLabel(monthKey)+'? Пустые перенесённые копии в будущих открытых месяцах также удалятся. Строки с суммами и комментариями сохранятся.'))return;
+ const ids=chosen.map(r=>String(r.id||'').trim()),unsaved=chosen.filter(r=>r._persisted===false),remote=chosen.filter(r=>r._persisted!==false);
+ if(ids.some(id=>!id)||new Set(ids).size!==ids.length){alert('В этом месяце обнаружены повторяющиеся ID. Обновите страницу, чтобы система исправила их, затем повторите выбор.');return;}
+ if(!remote.length){rows=rows.filter(r=>!selectedRowIds.has(r.id));selectedRowIds.clear();renderRows();renderSummary();status('Несохранённые строки удалены');return;}
+ $('bulkDelete').disabled=true;status('Удаляем '+ids.length+' строк…');
+ call('wlDeleteRows',monthKey,remote.map(r=>r.id)).then(res=>{
+   bddsData=null;const removed=new Set(ids);rows=rows.filter(r=>!removed.has(r.id));selectedRowIds.clear();renderRows();renderSummary();
+   status('Удалено '+(res.deleted+unsaved.length)+' строк, пустых будущих копий '+(res.propagated||0)+'. Корзина — у администратора.');
+ }).catch(e=>{showError(e);status('Ошибка массового удаления',true);renderRows();});
+}
+function updateTrashSelection(){
+ $('trashSelectedCount').textContent=selectedTrashEntries.size+' выбрано';
+ $('purgeSelectedTrash').disabled=!selectedTrashEntries.size;
+ $('restoreSelectedTrash').disabled=!selectedTrashEntries.size;
+ const all=$('selectAllTrash');const boxes=[...document.querySelectorAll('input.trash-row-check')];
+ if(all){all.checked=!!boxes.length&&boxes.every(b=>b.checked);all.indeterminate=boxes.some(b=>b.checked)&&!all.checked;}
+}
+function loadTrash(){
+ if(!boot||!boot.user.admin)return;
+ selectedTrashEntries.clear();$('trashStatus').textContent='Загрузка…';
+ call('wlTrashList').then(items=>{
+   const root=$('trashList');root.innerHTML='';const active=items.filter(x=>!x.restored);
+   $('trashStatus').textContent=active.length+' записей в корзине'+(items.length>=300?' (показаны последние 300)':'');
+   if(!active.length){root.textContent='Корзина пуста: выбирать и удалять сейчас нечего';updateTrashSelection();return;}
+   const table=document.createElement('table');table.className='access-table';const head=document.createElement('thead');
+   head.innerHTML='<tr><th style="width:45px"><input type="checkbox" id="selectAllTrash" title="Выбрать все записи корзины"></th><th>Месяц / отдел</th><th>Статья / описание</th><th>Сумма</th><th>Действие</th></tr>';table.appendChild(head);
+   const body=document.createElement('tbody');
+   items.forEach(item=>{
+     const tr=document.createElement('tr'),tick=document.createElement('td'),cb=document.createElement('input');cb.type='checkbox';cb.className='trash-row-check';cb.disabled=!!item.restored;
+     cb.checked=selectedTrashEntries.has(item.entry);
+     cb.onchange=()=>{if(cb.checked)selectedTrashEntries.add(item.entry);else selectedTrashEntries.delete(item.entry);tr.classList.toggle('selected',cb.checked);updateTrashSelection();};
+     tr.classList.toggle('selected',cb.checked);
+     tr.onclick=e=>{if(cb.disabled||e.target.closest('button')||e.target===cb)return;cb.checked=!cb.checked;cb.dispatchEvent(new Event('change'));};
+     tick.appendChild(cb);const date=document.createElement('td');date.textContent=monthLabel(item.month)+' · '+item.department;
+     const title=document.createElement('td');title.textContent=(item.category||'Без статьи')+' · '+(item.description||'Без описания');
+     const amount=document.createElement('td');amount.textContent=money(item.amount);
+     const action=document.createElement('td');if(item.restored){action.textContent='Восстановлена ✓';}
+     else{const btn=document.createElement('button');btn.className='btn small';btn.textContent='Восстановить';btn.onclick=()=>{
+       if(!confirm('Восстановить строку в '+monthLabel(item.month)+'?'))return;
+       btn.disabled=true;call('wlTrashRestore',item.entry).then(()=>{loadTrash();if(monthKey===item.month)loadMonth();}).catch(e=>{btn.disabled=false;showError(e);});
+     };action.appendChild(btn);}
+     tr.append(tick,date,title,amount,action);body.appendChild(tr);
+   });
+   table.appendChild(body);root.appendChild(table);
+   $('selectAllTrash').onchange=e=>setTrashPageSelection(e.target.checked);
+   updateTrashSelection();
+ }).catch(e=>{$('trashStatus').textContent='Ошибка: '+(e.message||e);});
+}
+function setTrashPageSelection(checked){document.querySelectorAll('input.trash-row-check:not(:disabled)').forEach(cb=>{if(cb.checked!==checked){cb.checked=checked;cb.dispatchEvent(new Event('change'));}});updateTrashSelection();}
+function restoreSelectedTrash(){
+ const ids=[...selectedTrashEntries];if(!ids.length)return;
+ if(!confirm('Восстановить '+ids.length+' отмеченных строк? Закрытые месяцы сначала нужно открыть.'))return;
+ $('restoreSelectedTrash').disabled=true;$('trashStatus').textContent='Восстанавливаем…';
+ call('wlTrashRestoreMany',ids).then(r=>{loadTrash();loadMonth();$('trashStatus').textContent='Восстановлено '+r.restored;}).catch(e=>{showError(e);loadTrash();});
+}
+function purgeSelectedTrash(){
+ const ids=[...selectedTrashEntries];if(!ids.length)return;
+ if(!confirm('ОЧИСТИТЬ КОРЗИНУ: '+ids.length+' строк? Их нельзя будет восстановить через приложение.'))return;
+ if(!confirm('ПОДТВЕРДИТЕ ОКОНЧАТЕЛЬНОЕ УДАЛЕНИЕ выбранных записей из корзины.'))return;
+ $('purgeSelectedTrash').disabled=true;$('trashStatus').textContent='Очищаем корзину…';
+ call('wlTrashPurge',ids).then(r=>{loadTrash();$('trashStatus').textContent='Очищено '+r.purged+' записей';}).catch(e=>{showError(e);loadTrash();});
+}
+function updateRoleVisibility(){
+ const role=$('accessRole').value,isAdmin=role==='admin';
+ $('adminAccessNotice').classList.toggle('hidden',!isAdmin);
+ $('limitedRights').classList.toggle('hidden',isAdmin);
+ document.querySelectorAll('.editopt,.tab-editopt').forEach(e=>{e.disabled=e.classList.contains('tab-editopt')&&e.dataset.tab!=='Отделы';});
+}
+function renderSummary(){
+ if(!boot)return;
+ const deps=summaryDepartment?[summaryDepartment]:boot.user.view;
+ const filtered=rows.filter(r=>deps.includes(r.department));
+ const all=grouped(filtered),list=all.filter(g=>!summaryText||g.name.toLocaleLowerCase('ru').includes(summaryText));
+ const sections=groupedSections(list),monthly=summaryMode==='monthly';
+ $('cfoFold').textContent=cfoCollapsed?'Развернуть статьи':'Свернуть статьи';$('cfoFoldDepartments').textContent=cfoDepartmentsCollapsed?'+ Отделы':'− Отделы';$('cfoFoldDepartments').disabled=summaryMode!=='monthly';
+ $('summaryMonthly').classList.toggle('active',monthly);$('summaryDaily').classList.toggle('active',!monthly);
+ const [year,month]=monthKey.split('-').map(Number),days=numDays(),showDepartments=monthly&&!cfoDepartmentsCollapsed,cols=monthly?(showDepartments?deps.length:0):days;
+ let header='<tr><th class="catcol">Статья ДДС</th>';
+ if(showDepartments)deps.forEach(d=>header+='<th>'+esc(d)+'</th>');
+ else if(!monthly)for(let d=1;d<=days;d++)header+='<th class="dailycol'+([0,6].includes(new Date(year,month-1,d).getDay())?' weekend':'')+'">'+d+'.'+('0'+month).slice(-2)+'</th>';
+ header+='<th>Итого за месяц</th></tr>';$('summaryHead').innerHTML=header;
+ $('summaryTable').classList.toggle('cfo-compact',monthly&&!showDepartments);
+ const body=$('summaryBody');body.innerHTML='';
+ function addGroupRow(group,title,kind){
+  const tr=document.createElement('tr');tr.className=kind||'';
+  const label=document.createElement('td');label.className='catcol';label.textContent=title;tr.appendChild(label);
+  if(showDepartments){deps.forEach(d=>{const td=document.createElement('td');td.className='num';const val=group.reduce((s,x)=>s+(x.byDept[d]||0),0);td.textContent=money(val);tr.appendChild(td);});}
+  else if(!monthly){for(let d=1;d<=days;d++){const td=document.createElement('td');td.className='num';const val=group.reduce((s,x)=>s+(x.byDay[d]||0),0);td.textContent=val?fmt.format(val):'—';tr.appendChild(td);}}
+  const total=document.createElement('td');total.className='num rightmost';total.textContent=money(group.reduce((s,x)=>s+x.total,0));tr.appendChild(total);body.appendChild(tr);
+ }
+ for(const section of sections){
+  if(!section.items.length)continue;
+  const band=document.createElement('tr');band.className='sum-section';
+  // Keep the section title fixed in the same left column as article names.
+  // A single colspan cell slides horizontally and misaligns the labels.
+  const label=document.createElement('td');label.className='catcol';label.textContent=section.title;
+  const fill=document.createElement('td');fill.className='section-fill';fill.colSpan=cols+1;
+  band.append(label,fill);body.appendChild(band);
+  if(!cfoCollapsed)section.items.forEach(item=>addGroupRow([item],item.name,''));
+  addGroupRow(section.items,section.sumTitle,'sum-subtotal');
+ }
+ $('summaryTotal').textContent='Поступления: '+money(sections[0].total)+' · Списания: '+money(sections[1].total);
+}
+
+function renderBdds(force){
+ if(!boot||!boot.user.tabs.includes('БДДС'))return;
+ const years=[...new Set(months.map(m=>m.key.slice(0,4)))].sort();
+ const select=$('bddsYearSelect');if(!bddsYear||!years.includes(bddsYear))bddsYear=years.includes(monthKey.slice(0,4))?monthKey.slice(0,4):years[0]||'';
+ select.innerHTML=years.map(y=>'<option value="'+y+'">'+y+'</option>').join('');select.value=bddsYear;
+ if(!bddsYear)return;
+ if(bddsData&&bddsData.year===bddsYear&&!force){renderBddsView();return;}
+ const year=bddsYear;$('bddsStatus').textContent='Загружаем '+year+' год…';
+ call('wlGetBddsPlan',year).then(res=>{if(bddsYear!==year)return;bddsData=res;renderBddsView();}).catch(e=>{$('bddsStatus').textContent='Ошибка: '+(e.message||e);});
+}
+function renderBddsView(){
+ if(!bddsData||bddsYear!==bddsData.year)return;
+ const plan=bddsData.articles||[],fact=bddsFactData&&bddsFactData.year===bddsYear?bddsFactData.articles||[]:[],hasFact=!!(bddsFactData&&bddsFactData.year===bddsYear);
+ const dates=[...new Set([...(bddsData.months||[]),...(monthKey.startsWith(bddsYear)?[monthKey]:[]),...fact.flatMap(r=>Object.keys(r.byMonth||{}).filter(m=>m.startsWith(bddsYear)))])].sort();
+ const combined=new Map();plan.forEach(r=>combined.set(r.id,{...r,byMonth:r.byMonth||{},factByMonth:{}}));
+ fact.forEach(r=>{const old=combined.get(r.id);if(old)old.factByMonth=r.byMonth||{};else combined.set(r.id,{...r,byMonth:{},factByMonth:r.byMonth||{}});});
+ const items=[...combined.values()],num=(n)=>Math.abs(Number(n)||0)<0.005?'—':money(n),aggregate=(list,field)=>Object.fromEntries(dates.map(m=>[m,list.reduce((v,r)=>v+(Number((r[field]||{})[m])||0),0)]));
+ const cell=(p,f,commentKey)=>{
+  const details=(v,w)=>hasFact?'<td class="num">'+num(w)+'</td><td class="num">'+num(v-w)+'</td><td class="num">'+(Math.abs(v)<0.005?'—':money(100*(w-v)/Math.abs(v))+'%')+'</td>':'<td class="num">—</td><td class="num">—</td><td class="num">—</td>';
+  let result='';
+  for(const m of dates){
+   const value=Number(p[m])||0,actual=Number(f[m])||0,expanded=bddsExpandedMonths.has(m),notes=commentKey?((bddsData.comments||{})[m+'|'+commentKey]||[]):[],last=notes[notes.length-1];
+   const comment=commentKey&&(boot.user.admin||last)?'<button class="bdds-comment-button" type="button" data-comment-key="'+esc(encodeURIComponent(commentKey))+'" data-comment-month="'+m+'" title="Открыть историю комментариев">'+(last?esc(last.text):'Добавить')+'</button>':'';
+   result+='<td class="num bdds-month-start">'+num(value)+'</td>'+(expanded?details(value,actual):'')+'<td class="bdds-comment-cell">'+comment+'</td>';
+  }
+  return result;
+ };
+ const renderRow=(label,p,f,style,key)=>'<tr class="'+style+'"><td class="catcol">'+esc(label)+'</td>'+cell(p,f,key)+'</tr>';
+ $('bddsHead').innerHTML='<tr><th class="catcol" rowspan="2">Показатель</th>'+dates.map(m=>'<th class="bdds-month-head" colspan="'+(bddsExpandedMonths.has(m)?5:2)+'"><button class="bdds-month-toggle" data-expand-month="'+m+'">'+(bddsExpandedMonths.has(m)?'− ':'+ ')+monthsRu[Number(m.slice(5))-1]+'</button></th>').join('')+'</tr><tr>'+dates.map(m=>bddsExpandedMonths.has(m)?'<th class="bdds-month-start">План</th><th>Факт</th><th>Откл.</th><th>%</th><th>Комментарий</th>':'<th class="bdds-month-start">План</th><th>Комментарий</th>').join('')+'</tr>';
+ const result=[],allInc=[],allOut=[],factInc=[],factOut=[];
+ const activities={operating:'ОПЕРАЦИОННАЯ ДЕЯТЕЛЬНОСТЬ',investment:'ИНВЕСТИЦИОННАЯ ДЕЯТЕЛЬНОСТЬ',financing:'ФИНАНСОВАЯ ДЕЯТЕЛЬНОСТЬ',unclassified:'СТАТЬИ, ТРЕБУЮЩИЕ УТОЧНЕНИЯ'};
+ for(const activity of Object.keys(activities)){
+  const section=items.filter(r=>r.activity===activity);if(!section.length)continue;
+  result.push(renderRow(activities[activity],aggregate(section,'byMonth'),aggregate(section,'factByMonth'),'bdds-section'+(activity==='unclassified'?' bdds-unmapped':''),null));
+  for(const [type,caption] of [['income','Поступления'],['expense','Списания']]){
+   const rows=section.filter(r=>r.type===type);if(!rows.length)continue;
+   const p=aggregate(rows,'byMonth'),f=aggregate(rows,'factByMonth');result.push(renderRow(caption,p,f,'bdds-subtotal',null));
+   const order=(((bddsData.sectionOrder||{})[activity]||{})[type]||[]);
+   const groups=[...new Set(rows.map(r=>r.group||'Прочие'))].sort((a,b)=>(order.indexOf(a)<0?999:order.indexOf(a))-(order.indexOf(b)<0?999:order.indexOf(b))||a.localeCompare(b,'ru'));
+   for(const group of groups){const selected=rows.filter(r=>(r.group||'Прочие')===group);
+    result.push(renderRow(group,aggregate(selected,'byMonth'),aggregate(selected,'factByMonth'),'bdds-group','group|'+activity+'|'+type+'|'+group));
+    if(!bddsCollapsed)selected.forEach(r=>result.push(renderRow(r.category,r.byMonth,r.factByMonth,'bdds-article',r.id)));
+   }
+   (type==='income'?allInc:allOut).push(p);(type==='income'?factInc:factOut).push(f);
+  }
+  const inc=section.filter(r=>r.type==='income'),out=section.filter(r=>r.type==='expense');
+  const subtract=(field)=>Object.fromEntries(dates.map(m=>[m,inc.reduce((v,r)=>v+(Number((r[field]||{})[m])||0),0)-out.reduce((v,r)=>v+(Number((r[field]||{})[m])||0),0)]));
+  result.push(renderRow('Сальдо по '+(activity==='operating'?'операционной':activity==='financing'?'финансовой':activity==='investment'?'инвестиционной':'неопределённой')+' деятельности',subtract('byMonth'),subtract('factByMonth'),'bdds-net',null));
+ }
+ const net=(a,b)=>Object.fromEntries(dates.map(m=>[m,a.reduce((v,r)=>v+(r[m]||0),0)-b.reduce((v,r)=>v+(r[m]||0),0)]));
+ result.push(renderRow('ЧИСТЫЙ ДЕНЕЖНЫЙ ПОТОК',net(allInc,allOut),net(factInc,factOut),'bdds-net',null));
+ $('bddsBody').innerHTML=result.join('');$('bddsFold').textContent=bddsCollapsed?'Развернуть статьи':'Свернуть статьи';
+ $('bddsFoldMonths').textContent=dates.length&&dates.every(m=>bddsExpandedMonths.has(m))?'Свернуть месяцы':'Развернуть месяцы';
+ $('bddsStatus').textContent=bddsYear+' год · '+items.length+' статей · '+(hasFact?'факт получен из ФинТабло':'факт не загружен')+((bddsData.unmapped||[]).length?' · уточнить классификацию: '+bddsData.unmapped.length:'');
+}
+function bddsOpenComment(month,key){
+ if(!bddsData)return;bddsCommentTarget={year:bddsYear,month,key};
+ $('bddsCommentContext').textContent=monthLabel(month)+' · '+key.split('|').pop();
+ const root=$('bddsCommentHistory');root.innerHTML='';const notes=(bddsData.comments||{})[month+'|'+key]||[];
+ if(!notes.length)root.textContent='Комментариев пока нет.';
+ for(const item of notes){const div=document.createElement('div');div.style.cssText='border:1px solid #d5dfeb;border-radius:8px;padding:10px;margin:6px 0;white-space:pre-wrap';const header=document.createElement('b');header.textContent=(item.by||item.email||'Автор')+(item.at?' · '+item.at.slice(0,16).replace('T',' '):'');const message=document.createElement('p');message.textContent=item.text||'';div.append(header,message);root.append(div);}
+ $('bddsCommentText').value='';$('bddsCommentText').disabled=!boot.user.admin;$('bddsCommentSave').classList.toggle('hidden',!boot.user.admin);$('bddsCommentStatus').textContent='';$('bddsCommentOverlay').classList.remove('hidden');
+}
+function bddsCloseComment(){bddsCommentTarget=null;$('bddsCommentOverlay').classList.add('hidden');}
+function bddsSaveComment(){
+ const target=bddsCommentTarget,text=$('bddsCommentText').value.trim();if(!target||!boot.user.admin||!text)return;
+ $('bddsCommentSave').disabled=true;$('bddsCommentStatus').textContent='Сохраняем…';
+ call('wlBddsPostComment',target.year,target.month,target.key,text).then(res=>{
+  if(!bddsData.comments)bddsData.comments={};bddsData.comments[target.month+'|'+target.key]=res.messages;bddsCloseComment();renderBddsView();
+ }).catch(e=>{$('bddsCommentStatus').textContent='Ошибка: '+e.message;}).finally(()=>{$('bddsCommentSave').disabled=false;});
+}
+function bddsLoadFact(){
+ if(!boot.user.admin||!confirm('Получить только фактические операции из ФинТабло за '+bddsYear+' год? Данные не изменяются.'))return;
+ const year=bddsYear;$('bddsFetchFact').disabled=true;$('bddsStatus').textContent='Чтение фактических операций…';
+ call('wlBddsFetchFact',year).then(res=>{if(year!==bddsYear)return;bddsFactData=res;renderBddsView();const w=res.warnings||{};if(w.uncategorized)$('bddsStatus').textContent+=' · не включено без категории: '+w.uncategorized;}).catch(e=>{$('bddsStatus').textContent='Не удалось получить факт: '+e.message;}).finally(()=>{$('bddsFetchFact').disabled=false;});
+}
+/** Читает лист «Импорт» обычного XLSX локально, без загрузки Excel в сторонние сервисы. */
+async function readXlsxImportSheet(buffer){
+ const view=new DataView(buffer),len=view.byteLength,decoder=new TextDecoder('utf-8');
+ // End of central directory: ZIP-compliant lookup of central directory.
+ let end=-1;for(let i=len-22;i>=Math.max(0,len-66000);i--)if(view.getUint32(i,true)===0x06054b50){end=i;break;}
+ if(end<0)throw Error('Файл не является корректным XLSX (ZIP)');
+ const count=view.getUint16(end+10,true),start=view.getUint32(end+16,true),files=new Map();let at=start;
+ if(count>20000)throw Error('В книге слишком много файлов');
+ for(let i=0;i<count;i++){
+  if(at+46>len||view.getUint32(at,true)!==0x02014b50)throw Error('XLSX: повреждён список файлов');
+  const method=view.getUint16(at+10,true),size=view.getUint32(at+20,true),n=view.getUint16(at+28,true),extra=view.getUint16(at+30,true),comment=view.getUint16(at+32,true),local=view.getUint32(at+42,true);
+  const name=decoder.decode(new Uint8Array(buffer,at+46,n));files.set(name,{method,size,local});at+=46+n+extra+comment;
+ }
+ async function unzip(name){
+  const ent=files.get(name);if(!ent)throw Error('XLSX не содержит '+name);
+  const i=ent.local;if(view.getUint32(i,true)!==0x04034b50)throw Error('XLSX: повреждена запись '+name);
+  const n=view.getUint16(i+26,true),ex=view.getUint16(i+28,true),from=i+30+n+ex;
+  if(from+ent.size>len)throw Error('XLSX: повреждён размер '+name);
+  const bytes=new Uint8Array(buffer,from,ent.size);
+  if(ent.method===0)return decoder.decode(bytes);
+  if(ent.method!==8||typeof DecompressionStream==='undefined')throw Error('Этот XLSX использует неподдерживаемое сжатие. Откройте в современном Chrome или Edge.');
+  const stream=new Blob([bytes]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return decoder.decode(await new Response(stream).arrayBuffer());
+ }
+ function parseXml(text){
+  const doc=new DOMParser().parseFromString(text,'application/xml');
+  if(doc.getElementsByTagName('parsererror').length)throw Error('XLSX содержит повреждённый XML');return doc;
+ }
+ const sheets=parseXml(await unzip('xl/workbook.xml'));
+ const sheetNodes=[...sheets.getElementsByTagNameNS('*','sheet')];
+ const target=sheetNodes.find(x=>x.getAttribute('name')==='Импорт');
+ if(!target)throw Error('В книге нет листа «Импорт». Используйте наш шаблон.');
+ const relId=target.getAttribute('r:id')||target.getAttributeNS('http://schemas.openxmlformats.org/officeDocument/2006/relationships','id');
+ const rels=parseXml(await unzip('xl/_rels/workbook.xml.rels'));
+ const link=[...rels.getElementsByTagNameNS('*','Relationship')].find(x=>x.getAttribute('Id')===relId);
+ if(!link)throw Error('Не найдена связь с листом «Импорт»');
+ let sheetName=link.getAttribute('Target').replace(/\\/g,'/');
+ if(sheetName.startsWith('/'))sheetName=sheetName.slice(1);
+ else if(!sheetName.startsWith('xl/'))sheetName='xl/'+sheetName;
+ const parts=[];for(const part of sheetName.split('/')){if(part==='..')parts.pop();else if(part!=='.')parts.push(part);}sheetName=parts.join('/');
+ const shared=[];
+ if(files.has('xl/sharedStrings.xml')){
+  const strings=parseXml(await unzip('xl/sharedStrings.xml'));
+  for(const si of strings.getElementsByTagNameNS('*','si'))shared.push([...si.getElementsByTagNameNS('*','t')].map(t=>t.textContent).join(''));
+ }
+ const doc=parseXml(await unzip(sheetName)),sheetData=doc.getElementsByTagNameNS('*','sheetData')[0];
+ if(!sheetData)throw Error('Лист «Импорт» пуст');
+ const result=[];
+ for(const row of sheetData.getElementsByTagNameNS('*','row')){
+  const rowNumber=Number(row.getAttribute('r'))||result.length+1;
+  if(rowNumber>25000)throw Error('Слишком много строк. Разбейте файл на части.');
+  const cells=[];
+  for(const cell of row.getElementsByTagNameNS('*','c')){
+   const reference=cell.getAttribute('r')||'',letters=(reference.match(/^[A-Z]+/i)||[])[0];if(!letters)continue;
+   let col=0;for(const ch of letters.toUpperCase())col=col*26+ch.charCodeAt(0)-64;col--;
+   if(col<0||col>1024)continue;
+   const type=cell.getAttribute('t'),v=cell.getElementsByTagNameNS('*','v')[0];let raw=v?v.textContent:'';
+   if(type==='s')raw=shared[Number(raw)]||'';
+   else if(type==='inlineStr')raw=[...cell.getElementsByTagNameNS('*','t')].map(x=>x.textContent).join('');
+   else if(type==='b')raw=raw==='1';
+   else if(type!=='e'&&type!=='str'&&type!=='d'&&raw!==''&&!isNaN(Number(raw)))raw=Number(raw);
+   cells[col]=raw;
+  }
+  result[rowNumber-1]=cells;
+ }
+ return result.map(x=>x||[]);
+}
+
+function fnv1a(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619);}return (h>>>0).toString(36).padStart(8,'0').slice(-8);}
+function excelMoney(raw){
+ if(raw===null||raw===undefined||String(raw).trim()==='')return '';
+ if(typeof raw==='number')return Number.isFinite(raw)?raw:null;
+ const s=String(raw).replace(/[\s\u00a0\u202f₽]/g,'').replace(',','.');
+ if(!/^-?\d+(?:\.\d{1,2})?$/.test(s))return null;
+ const v=Number(s);return Number.isFinite(v)?v:null;
+}
+function excelMonth(x){
+ if(typeof x==='number'&&x>40000&&x<100000){const d=new Date(Math.round((x-25569)*86400000));return d.getUTCFullYear()+'-'+('0'+(d.getUTCMonth()+1)).slice(-2);}
+ const s=String(x==null?'':x).trim();if(/^\d{4}-(0[1-9]|1[0-2])$/.test(s))return s;
+ const m=s.match(/^(0?[1-9]|1[0-2])[.\/]([12]\d{3})$/);return m?m[2]+'-'+('0'+m[1]).slice(-2):'';
+}
+async function prepareExcelImport(){
+ const file=$('excelFile').files[0],preview=$('importPreview');importPrepared=null;$('confirmExcel').disabled=true;
+ if(!file)return;preview.className='import-preview';preview.textContent='Читаем и сверяем Excel…';
+ try{
+  if(file.size>20*1024*1024)throw Error('Файл больше 20 МБ. Разбейте его на несколько файлов.');
+  const matrix=await readXlsxImportSheet(await file.arrayBuffer()),headers=(matrix[0]||[]).map(x=>String(x||'').trim());
+  if(WL_EXCEL_HEADERS.some((h,i)=>h!==headers[i]))throw Error('Неверный формат. Скачайте единый Excel-шаблон или актуальный бюджет из раздела «Отделы».');
+  const errors=[],warnings=[],groups={},ids=new Set();let count=0;
+  const allowedDepartments=new Set(dict.departments.map(x=>x.name)),pays=new Set(dict.payments),sources=new Set(dict.sources),expenses=new Set(dict.categories),incomes=new Set(dict.incomeCategories||[]);
+  for(let i=1;i<matrix.length;i++){
+   const raw=matrix[i]||[],meta=raw.slice(0,37).map(x=>String(x==null?'':x).trim());if(!meta.some(Boolean))continue;
+   const line=i+1,key=excelMonth(raw[0]),department=String(raw[1]||'').trim(),payment=String(raw[2]||'').trim(),source=String(raw[3]||'').trim(),category=String(raw[4]||'').trim(),description=String(raw[5]||'').trim(),checks=[];
+   const baseSig=String(raw[39]||'').trim();let id=String(raw[38]||'').trim();
+   let flow=String(raw[40]||'').trim().toLowerCase();flow=flow==='поступление'?'income':flow==='списание'?'expense':flow;
+   if(!key||!months.some(m=>m.key===key&&m.status==='Открыт'))checks.push('недоступный или закрытый месяц');
+   if(!allowedDepartments.has(department))checks.push('неизвестный отдел');
+   if(payment&&!pays.has(payment))checks.push('неизвестный способ оплаты');
+   if(source&&!sources.has(source))checks.push('неизвестный источник оплаты');
+   if(category&&!expenses.has(category)&&!incomes.has(category))checks.push('статья отсутствует в справочнике');
+   if(flow&&flow!=='income'&&flow!=='expense')checks.push('тип потока должен быть Поступление или Списание');
+   if(!flow&&category)flow=incomes.has(category)&&!expenses.has(category)?'income':'expense';
+   if(category&&flow==='income'&&!incomes.has(category))checks.push('статья не является поступлением');
+   if(category&&flow==='expense'&&!expenses.has(category))checks.push('статья не является списанием');
+   if(!id){id='imp-'+(key||'0000-00').replace('-','')+'-'+fnv1a(file.name+'|'+line+'|'+department+'|'+description);}
+   else if(!baseSig)checks.push('нет контрольной суммы: скачайте актуальный бюджет');
+   if(ids.has((key||'')+'|'+id))checks.push('повторяющийся ID');ids.add((key||'')+'|'+id);
+   const amounts={},lastDay=key?new Date(Number(key.slice(0,4)),Number(key.slice(5,7)),0).getDate():31;
+   for(let d=1;d<=31;d++){let amount=excelMoney(raw[d+5]);if(amount===null){checks.push('неправильная сумма в дне '+d);continue;}if(amount==='')continue;if(Math.abs(amount*100-Math.round(amount*100))>1e-6){checks.push('более двух знаков после запятой в дне '+d);continue;}if(d>lastDay&&amount!==0)checks.push('лишний день '+d);else if(amount)amounts[d]=Math.round(amount*100)/100;}
+   if(!description)warnings.push('Строка '+line+': пустое описание');
+   if(checks.length){errors.push('Строка '+line+': '+checks.join('; '));continue;}
+   (groups[key]||(groups[key]=[])).push({id,baseSig,department,payment,source,category,description,amounts,cashFlowType:flow});count++;
+  }
+  if(errors.length)throw Error(errors.slice(0,12).join('\n')+(errors.length>12?'\n… и ещё '+(errors.length-12):''));
+  if(!count)throw Error('Нет заполненных строк для импорта.');
+  const totals={added:0,updated:0,unchanged:0,conflicts:[]};
+  // Admin-only dry run on server. No data is changed until explicit confirmation.
+  for(const [key,list] of Object.entries(groups))for(let i=0;i<list.length;i+=800){
+   const stat=await call('wlPreviewExcelRoundTrip',key,list.slice(i,i+800));
+   totals.added+=stat.added||0;totals.updated+=stat.updated||0;totals.unchanged+=stat.unchanged||0;totals.conflicts.push(...(stat.conflicts||[]));
+  }
+  importPrepared={groups,count,totals};
+  preview.className='import-preview'+(totals.conflicts.length?' error':' success');
+  preview.textContent='Проверка: '+count+' строк; новых '+totals.added+', изменённых '+totals.updated+', без изменений '+totals.unchanged+'.'+(warnings.length?' Замечаний: '+warnings.length+'.':'')+(totals.conflicts.length?' Конфликты: '+totals.conflicts.slice(0,8).join('; '):' Можно подтвердить загрузку.');
+  $('confirmExcel').disabled=totals.conflicts.length>0;
+ }catch(e){preview.className='import-preview error';preview.textContent='Ошибка проверки Excel: '+(e.message||e);$('confirmExcel').disabled=true;}
+}
+async function uploadExcelImport(){
+ const prep=importPrepared;if(!prep||prep.totals.conflicts.length)return;
+ if(!confirm('Подтвердить обновление бюджета? Новых строк: '+prep.totals.added+', изменений: '+prep.totals.updated+'. Строки, отсутствующие в Excel, удалены НЕ будут.'))return;
+ $('confirmExcel').disabled=true;$('uploadExcel').disabled=true;
+ let added=0,updated=0,unchanged=0,done=0;
+ try{
+  for(const [key,list] of Object.entries(prep.groups))for(let i=0;i<list.length;i+=60){
+   const res=await call('wlApplyExcelRoundTrip',key,list.slice(i,i+60));
+   added+=res.added||0;updated+=res.updated||0;unchanged+=res.unchanged||0;done+=Math.min(60,list.length-i);
+   $('importStatus').textContent='Сохраняем '+done+' из '+prep.count+'…';
+  }
+  importPrepared=null;bddsData=null;monthCache.clear();
+  $('importPreview').className='import-preview success';$('importStatus').textContent='Загружено: новых '+added+', обновлено '+updated+', без изменений '+unchanged+'.';
+  if(boot.user.tabs.includes('Отделы')||boot.user.tabs.includes('ЦФО'))loadMonth();
+ }catch(e){$('importPreview').className='import-preview error';$('importStatus').textContent='Остановлено после '+done+' строк: '+(e.message||e)+'. Применённые пакеты сохраняются; повторите проверку перед продолжением.';showError(e);}
+ finally{$('confirmExcel').disabled=false;$('uploadExcel').disabled=false;}
+}
+
+start();
+})();
+</script></body></html>

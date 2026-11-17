@@ -1042,10 +1042,12 @@ function wlSetArticleGroup(type,category,activity,group){
 }
 function wlBddsComments_(ss,year){
  const sh=ss.getSheetByName('WL_БДДС_Комментарии'),all={};if(!sh||sh.getLastRow()<2)return all;
+ const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone();
  sh.getRange(2,1,sh.getLastRow()-1,4).getValues().forEach(row=>{
   if(String(row[0])!==year)return;
-  try{let messages=JSON.parse(String(row[3])||'[]');if(Array.isArray(messages))all[row[1]+'|'+row[2]]=messages.slice(-30);}catch(_){ }
- });return all;
+  const month=wlMonthCellKey_(row[1],zone);if(!month)return;
+  try{let messages=JSON.parse(String(row[3])||'[]');if(Array.isArray(messages)){const key=month+'|'+row[2];all[key]=(all[key]||[]).concat(messages);}}catch(_){ }
+ });Object.keys(all).forEach(key=>{all[key].sort((a,b)=>String(a.at||'').localeCompare(String(b.at||'')));all[key]=all[key].slice(-30);});return all;
 }
 function wlGetBddsPlan(year){
  year=String(year||'');if(!/^\d{4}$/.test(year))throw Error('Неверный год');
@@ -1081,14 +1083,15 @@ function wlBddsPostComment(year,month,key,text){
   const ss=wlStore_(),user=wlAdmin_(ss);
   const sh=wlNewSheet_(ss,'WL_БДДС_Комментарии',['Год','Месяц','Ключ показателя','Сообщения JSON','Изменено']);
   const old=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,3).getValues():[];
-  const idx=old.findIndex(r=>String(r[0])===year&&String(r[1])===month&&String(r[2])===key);
+  const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone();
+  const idx=old.findIndex(r=>String(r[0])===year&&wlMonthCellKey_(r[1],zone)===month&&String(r[2])===key);
   const line=idx<0?sh.getLastRow()+1:idx+2;
   let messages=[];if(idx>=0){try{messages=JSON.parse(String(sh.getRange(line,4).getValue())||'[]');}catch(_){}}
   if(!Array.isArray(messages))messages=[];
   messages.push({text,by:user.name,email:user.email,at:new Date().toISOString()});
   if(idx<0)sh.getRange(line,1,1,3).setValues([[year,month,key]]);
   sh.getRange(line,4,1,2).setValues([[JSON.stringify(messages.slice(-30)),new Date()]]);
-  return {ok:true,messages:messages.slice(-30)};
+  return {ok:true,messages:wlBddsComments_(ss,year)[month+'|'+key]||[]};
  });
 }
 /** Delete a specific comment, preserving a recoverable snapshot. */
@@ -1099,16 +1102,13 @@ function wlBddsDeleteComment(year,month,key,expected){
   const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'БДДС',false);
   const sh=ss.getSheetByName('WL_БДДС_Комментарии');if(!sh||sh.getLastRow()<2)throw Error('Комментарий не найден');
   const values=sh.getRange(2,1,sh.getLastRow()-1,4).getValues();
-  const idx=values.findIndex(r=>String(r[0])===year&&String(r[1])===month&&String(r[2])===key);
-  if(idx<0)throw Error('Комментарий не найден');
-  let messages;try{messages=JSON.parse(String(values[idx][3])||'[]');}catch(_){throw Error('История комментариев повреждена');}
-  if(!Array.isArray(messages))throw Error('История комментариев повреждена');
-  const matches=messages.map((x,i)=>JSON.stringify(x)===JSON.stringify(expected)?i:-1).filter(i=>i>=0);
+  const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone(),matches=[];
+  values.forEach((r,idx)=>{if(String(r[0])!==year||wlMonthCellKey_(r[1],zone)!==month||String(r[2])!==key)return;let messages;try{messages=JSON.parse(String(r[3])||'[]');}catch(_){throw Error('История комментариев повреждена');}if(!Array.isArray(messages))throw Error('История комментариев повреждена');messages.forEach((x,i)=>{if(JSON.stringify(x)===JSON.stringify(expected))matches.push({idx,i,messages});});});
   if(matches.length!==1)throw Error('Комментарий изменился или неоднозначен. Обновите отчёт');
-  const removed=messages[matches[0]],now=new Date(),archive=wlNewSheet_(ss,'WL_БДДС_Удалённые комментарии',['Год','Месяц','Ключ','Комментарий JSON','Удалено','Кто удалил']);
+  const {idx,i,messages}=matches[0],removed=messages[i],now=new Date(),archive=wlNewSheet_(ss,'WL_БДДС_Удалённые комментарии',['Год','Месяц','Ключ','Комментарий JSON','Удалено','Кто удалил']);
   archive.appendRow([year,month,key,JSON.stringify(removed),now,user.email]);
-  messages.splice(matches[0],1);sh.getRange(idx+2,4,1,2).setValues([[JSON.stringify(messages),now]]);
-  return {ok:true,messages};
+  messages.splice(i,1);sh.getRange(idx+2,4,1,2).setValues([[JSON.stringify(messages),now]]);
+  return {ok:true,messages:wlBddsComments_(ss,year)[month+'|'+key]||[]};
  });
 }
 /** Fact is explicitly requested and read-only. API schema is validated before displaying. */

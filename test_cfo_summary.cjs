@@ -1,0 +1,7 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const h=fs.readFileSync('Index.html','utf8'),start=h.indexOf('function cfoFinancialSummary('),end=h.indexOf('\nfunction cfoLoadFunds(',start);
+const ctx={cfoGroupMeta:item=>({activity:item.activity})};vm.createContext(ctx);vm.runInContext(h.slice(start,end),ctx);
+const rows=[{name:'Продажи',activity:'operating',type:'income',total:1000},{name:'Расходы',activity:'operating',type:'expense',total:400},{name:'Инвестиции',activity:'investment',type:'expense',total:50},{name:'Кредит',activity:'financing',type:'income',total:200},{name:'Выплата тела кредита',activity:'financing',type:'expense',total:100},{name:'Проценты по кредиту',activity:'operating',type:'expense',total:20},{name:'Без раздела',activity:'unclassified',type:'income',total:9999}];
+const result=ctx.cfoFinancialSummary(rows);assert.equal(result.balances.operating,580);assert.equal(result.balances.investment,-50);assert.equal(result.balances.financing,100);assert.equal(result.net,630);assert.equal(result.dscr,580/120);assert.equal(ctx.cfoFinancialSummary([]).dscr,null);
+const c=fs.readFileSync('Code.js','utf8');assert(c.includes("WL_BDDS_GROUP['expense|маркировка товара']='Маркировка товара'"));assert(c.includes("WL_BDDS_GROUP['expense|сертификация товаров']='Маркировка товара'"));
+console.log('Balances, net, debt ratio, unclassified isolation and marking group passed');

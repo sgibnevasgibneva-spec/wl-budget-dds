@@ -1,4 +1,4 @@
-/** FinTablo's official MCP is read-only. Only the finished cash-flow report is requested. */
+/** FinTablo's official MCP is read-only; request only the finished cash-flow report. */
 function wlFtReportClient_(token){
  const endpoint='https://my.fintablo.ru/mcp',base={Authorization:'Bearer '+token,Accept:'application/json, text/event-stream'};
  let session='';

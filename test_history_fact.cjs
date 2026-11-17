@@ -3,3 +3,5 @@ ctx.bddsFactData.articles[0].byMonth['2026-10']=80;ctx.renderBddsHistory();asser
 ctx.bddsFactData.articles[0].byMonth['2026-10']=79;ctx.renderBddsHistory();assert(els.bddsHistoryBody.innerHTML.includes('bdds-comment-alert'));
 ctx.bddsFactData.articles[0].byMonth['2026-10']=121;ctx.renderBddsHistory();assert(els.bddsHistoryBody.innerHTML.includes('bdds-comment-alert'));
 console.log('History highlights deviations strictly greater than 20% in both directions');
+ctx.bddsExpandedMonths.clear();ctx.renderBddsHistory();assert(!els.bddsHistoryHead.innerHTML.includes('Комментарий'));assert(!els.bddsHistoryBody.innerHTML.includes('bdds-comment-cell'));assert(els.bddsHistoryBody.innerHTML.includes('100'));
+console.log('Collapsed history month keeps the plan and hides comments');

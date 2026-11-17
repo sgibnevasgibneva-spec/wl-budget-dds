@@ -1208,7 +1208,7 @@ function wlBddsFetchFact(year,requestedMonth){
  }
  if(!complete)throw Error('Достигнут лимит страниц ФинТабло. Частичный факт не отображается');
  const parentIds=new Set(rows.map(r=>String(r.parentId||'')).filter(Boolean));
- const grouping=wlBddsGrouping_(ss),articles=new Map(),warnings={ignoredPlan:0,ignoredUnknown:0,ignoredTransfer:0,uncategorized:0,ignoredCurrency:0};
+ const grouping=wlBddsGrouping_(ss),articles=new Map(),unclassified=[],warnings={ignoredPlan:0,ignoredUnknown:0,ignoredTransfer:0,uncategorized:0,ignoredCurrency:0};
  for(const r of rows){
   if(parentIds.has(String(r.id)))continue;
   const planFlag=r.isPlan!==undefined?r.isPlan:r.isPlanned;
@@ -1220,11 +1220,11 @@ function wlBddsFetchFact(year,requestedMonth){
   const amount=Number(r.value!==undefined?r.value:r.amount);if(!Number.isFinite(amount))continue;
   let category=String((r.category&&typeof r.category==='object'?(r.category.name||r.category.title):'')||'').trim();
   const catId=String(r.categoryId||r.category_id||(typeof r.category!=='object'?r.category:'')||'');if(!category)category=byId[catId]||'';
-  if(!category){warnings.uncategorized++;continue;}
+  if(!category){warnings.uncategorized++;unclassified.push({id:String(r.id||r.transactionId||''),date:rawDate,type:group==='income'?'income':'expense',amount:Math.abs(amount),description:String(r.comment||r.description||'').slice(0,500),categoryId:catId});continue;}
   const type=group==='income'?'income':'expense',id=type+'|'+wlBddsNormalize_(category),meta=wlBddsMeta_(type,category,grouping);
   const found=articles.get(id)||{id,category,type,activity:meta.activity,group:meta.group,byMonth:{}};
   found.byMonth[month]=(found.byMonth[month]||0)+Math.abs(amount);articles.set(id,found);
  }
  if(rows.length&&warnings.ignoredUnknown===rows.length)throw Error('В API отсутствует надёжный признак план/факт. Факт не показан');
- return {year,month:requestedMonth,articles:[...articles.values()],totalTransactions:rows.length,warnings,readOnly:true};
+ return {year,month:requestedMonth,articles:[...articles.values()],unclassified,totalTransactions:rows.length,warnings,readOnly:true};
 }

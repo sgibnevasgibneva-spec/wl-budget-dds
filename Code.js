@@ -1074,6 +1074,26 @@ function wlBddsPostComment(year,month,key,text){
   return {ok:true,messages:messages.slice(-30)};
  });
 }
+/** Delete a specific comment, preserving a recoverable snapshot. */
+function wlBddsDeleteComment(year,month,key,expected){
+ year=String(year||'');month=wlKey_(month);key=String(key||'').trim();
+ if(month.slice(0,4)!==year||!key||!expected||typeof expected!=='object')throw Error('Некорректный комментарий');
+ return wlLock_(()=>{
+  const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'БДДС',false);
+  const sh=ss.getSheetByName('WL_БДДС_Комментарии');if(!sh||sh.getLastRow()<2)throw Error('Комментарий не найден');
+  const values=sh.getRange(2,1,sh.getLastRow()-1,4).getValues();
+  const idx=values.findIndex(r=>String(r[0])===year&&String(r[1])===month&&String(r[2])===key);
+  if(idx<0)throw Error('Комментарий не найден');
+  let messages;try{messages=JSON.parse(String(values[idx][3])||'[]');}catch(_){throw Error('История комментариев повреждена');}
+  if(!Array.isArray(messages))throw Error('История комментариев повреждена');
+  const matches=messages.map((x,i)=>JSON.stringify(x)===JSON.stringify(expected)?i:-1).filter(i=>i>=0);
+  if(matches.length!==1)throw Error('Комментарий изменился или неоднозначен. Обновите отчёт');
+  const removed=messages[matches[0]],now=new Date(),archive=wlNewSheet_(ss,'WL_БДДС_Удалённые комментарии',['Год','Месяц','Ключ','Комментарий JSON','Удалено','Кто удалил']);
+  archive.appendRow([year,month,key,JSON.stringify(removed),now,user.email]);
+  messages.splice(matches[0],1);sh.getRange(idx+2,4,1,2).setValues([[JSON.stringify(messages),now]]);
+  return {ok:true,messages};
+ });
+}
 /** Fact is explicitly requested and read-only. API schema is validated before displaying. */
 function wlBddsFetchFact(year){
  year=String(year||'');if(!/^\d{4}$/.test(year))throw Error('Неверный год');

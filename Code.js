@@ -395,10 +395,10 @@ function wlRowOrder_(ss,key,department,rows){
  const rank=new Map(ids.map((id,i)=>[String(id),i]));return rows.map((row,i)=>({row,i})).sort((a,b)=>(rank.has(a.row.id)?rank.get(a.row.id):ids.length+a.i)-(rank.has(b.row.id)?rank.get(b.row.id):ids.length+b.i)).map(x=>x.row);
 }
 function wlMoveBudgetRow(key,department,id,direction){
- key=wlKey_(key);department=wlNormalizeDept_(department);id=String(id||'');if(!['up','down','top'].includes(direction))throw Error('Недопустимое направление');
+ key=wlKey_(key);department=wlNormalizeDept_(department);id=String(id||'');if(!['up','down','top','bottom'].includes(direction))throw Error('Недопустимое направление');
  return wlLock_(()=>{const ss=wlStore_(),user=wlUser_(ss),month=wlFindMonth_(ss,key);wlRequireBudgetYear_(user,key);wlRequireTab_(user,'Отделы',true);if(month.status!=='Открыт'||!user.edit.includes(department))throw Error('Нет права изменять строки этого отдела или месяц закрыт');
   const rows=wlRowOrder_(ss,key,department,wlOpsRead_(wlOps_(ss),key).map(x=>x.row).filter(r=>r.department===department)),index=rows.findIndex(r=>r.id===id);if(index<0)throw Error('Строка не найдена. Обновите страницу');
-  const target=direction==='top'?0:direction==='up'?Math.max(0,index-1):Math.min(rows.length-1,index+1);const [moved]=rows.splice(index,1);rows.splice(target,0,moved);
+  const target=direction==='top'?0:direction==='bottom'?rows.length-1:direction==='up'?Math.max(0,index-1):Math.min(rows.length-1,index+1);const [moved]=rows.splice(index,1);rows.splice(target,0,moved);
   const sh=wlNewSheet_(ss,'WL_Порядок_строк',['Месяц','Отдел','Порядок ID','Изменено','Кто изменил']),zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone(),old=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,2).getValues():[],i=old.findIndex(r=>wlMonthCellKey_(r[0],zone)===key&&String(r[1])===department),line=i<0?sh.getLastRow()+1:i+2;
   sh.getRange(line,1,1,5).setValues([[key,department,JSON.stringify(rows.map(r=>r.id)),new Date(),user.email]]);return rows.map(r=>r.id);
  });

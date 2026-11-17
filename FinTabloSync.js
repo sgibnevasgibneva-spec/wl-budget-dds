@@ -103,6 +103,29 @@ function wlFinTabloDigest_(data){
   const bytes=Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,JSON.stringify(data),Utilities.Charset.UTF_8);
   return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/,'');
 }
+/** Read-only comparison. Do not infer ownership of pre-existing plans. */
+function wlFinTabloBudgetPreview(month){
+ month=wlKey_(month);const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'ФинТабло',false);wlFindMonth_(ss,month,false);
+ const token=PropertiesService.getScriptProperties().getProperty(WL_FT_TOKEN_PROP_);if(!token)throw Error('Сначала сохраните ключ ФинТабло');
+ const cat=wlFinTabloNormalize_(wlFinTabloFetch_()),local=new Map(),warnings=cat.warnings.slice(),dict=wlDictionaries_(ss),income=new Set(dict.incomeCategories.map(wlBddsNormalize_)),expense=new Set(dict.categories.map(wlBddsNormalize_));
+ for(const e of wlOpsRead_(wlOps_(ss),month)){const r=e.row,name=String(r.category||'').trim(),amount=Object.values(r.amounts||{}).reduce((s,v)=>s+(Number(v)||0),0);if(!amount)continue;if(!name){warnings.push('Есть сумма без статьи в отделе '+r.department);continue;}
+  const normalized=wlBddsNormalize_(name),type=r.cashFlowType==='income'?'income':r.cashFlowType==='expense'?'expense':income.has(normalized)&&!expense.has(normalized)?'income':'expense',key=type+'|'+normalized,old=local.get(key)||{type,name,amount:0};old.amount+=amount;local.set(key,old);
+ }
+ const date=month.slice(5)+'.'+month.slice(0,4),response=UrlFetchApp.fetch('https://api.fintablo.ru/v1/bdds?date='+encodeURIComponent(date),{method:'get',muteHttpExceptions:true,followRedirects:false,headers:{Authorization:'Bearer '+token,Accept:'application/json'}}),code=response.getResponseCode();
+ if(code!==200)throw Error('Не удалось прочитать план ФинТабло (HTTP '+code+'). Данные не изменены.');let body;try{body=JSON.parse(response.getContentText());}catch(_){throw Error('Некорректный ответ ФинТабло');}
+ if(!body||!Array.isArray(body.items))throw Error('Неизвестный формат ответа плана ФинТабло. Сверка остановлена.');
+ const remote=body.items;if(remote.length>=1000)warnings.push('Слишком много записей ФинТабло: полнота ответа не подтверждена');
+ const result=[];for(const item of local.values()){
+  const matches=cat.candidates.filter(c=>wlBddsNormalize_(c.name)===wlBddsNormalize_(item.name)&&c.group===(item.type==='income'?'income':'outcome'));
+  if(item.amount<0){result.push({...item,status:'Отрицательная сумма — проверить'});continue;}
+  if(matches.length!==1||!/^\d+$/.test(matches[0].id)){result.push({...item,status:'Статья не сопоставлена однозначно'});continue;}
+  const id=Number(matches[0].id),entries=remote.filter(r=>Number(r.categoryId)===id&&String(r.date)===date),unknown=entries.some(r=>!Number.isFinite(Number(r.value))||r.value==null||r.value==='');
+  if(unknown){result.push({...item,status:'Некорректные данные ФинТабло'});continue;}
+  const amount=entries.reduce((s,r)=>s+Number(r.value),0),status=entries.length===0?'Нет плана в ФинТабло':entries.length>1?'Несколько записей — проверить':entries[0].directionId!=null?'Есть направление — проверить':Math.abs(amount-item.amount)<0.005?'Совпадает':'Сумма отличается';
+  result.push({...item,remoteAmount:entries.length?amount:null,remoteCount:entries.length,status});
+ }
+ return {month,rows:result.sort((a,b)=>a.name.localeCompare(b.name,'ru')),warnings,remoteCount:remote.length};
+}
 function wlFinTabloLocal_(ss){const d=wlDictionaries_(ss);return {expenses:d.categories.slice().sort(),incomes:d.incomeCategories.slice().sort()};}
 function wlFinTabloPreview(){
   const ss=wlStore_();wlAdmin_(ss);

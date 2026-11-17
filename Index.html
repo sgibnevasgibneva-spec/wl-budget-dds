@@ -1120,7 +1120,12 @@ function bddsOpenComment(month,key){
  if(!bddsData)return;bddsCommentTarget={year:bddsYear,month,key};
  $('bddsCommentContext').textContent=monthLabel(month)+' · '+(key.startsWith('history|')?key.split('|')[1]:key.split('|').pop());
  const root=$('bddsCommentHistory');root.innerHTML='';const notes=(bddsData.comments||{})[month+'|'+key]||[];
- if(!notes.length)root.textContent='Комментариев пока нет.';
+ const facts=bddsFactData&&bddsFactData.departmentFacts&&bddsFactData.departmentFacts[month]||{};
+ const history=key.startsWith('history|'),name=history?key.split('|')[1]:'',matches=history?Object.values(facts).filter(x=>String(x.category||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim()===name.replace(/ё/g,'е').replace(/\s+/g,' ').trim()):[facts[key]].filter(Boolean);
+ const fact=matches.length===1?matches[0]:null,plan=(bddsData.articles||[]).find(x=>x.id===(fact?fact.id:key)),messages=[],matched=(bddsFactData&&bddsFactData.matchedDepartments||{})[month]||[],deptNames=[...new Set([...Object.keys(fact&&fact.byDepartment||{}),...Object.keys(plan&&plan.byDepartment||{}).filter(d=>matched.includes(d))])];
+ if(fact||plan)deptNames.sort().forEach(dept=>{const actual=Number(fact&&fact.byDepartment&&fact.byDepartment[dept])||0,values=plan&&plan.byDepartment&&plan.byDepartment[dept],hasPlan=values&&Object.prototype.hasOwnProperty.call(values,month);if(!hasPlan){if(history)messages.push(dept+': факт '+money(actual)+' ₽; план отдела за этот месяц недоступен.');return;}const p=Number(values[month])||0,delta=actual-p;if(Math.abs(p)<0.005){if(Math.abs(actual)>=0.005)messages.push(dept+': план 0 ₽, факт '+money(actual)+' ₽ — нет плановой суммы, требуется пояснение.');}else if(Math.abs(delta/p)>0.2)messages.push(dept+': план '+money(p)+' ₽, факт '+money(actual)+' ₽, отклонение '+money(100*delta/Math.abs(p))+'% — требуется пояснение.');});
+ if(messages.length){const info=document.createElement('div');info.style.cssText='border:1px solid #e5b3b3;background:#fff7f7;border-radius:8px;padding:10px;margin:6px 0;white-space:pre-wrap';info.textContent='Автоматическая сверка по отделам:\n'+messages.join('\n');root.append(info);}
+ if(!notes.length&&!messages.length)root.textContent='Комментариев пока нет.';
  for(const item of notes){const div=document.createElement('div');div.style.cssText='border:1px solid #d5dfeb;border-radius:8px;padding:10px;margin:6px 0;white-space:pre-wrap';const header=document.createElement('b');header.textContent=(item.by||item.email||'Автор')+(item.at?' · '+item.at.slice(0,16).replace('T',' '):'');const message=document.createElement('p');message.textContent=item.text||'';div.append(header,message);if(boot.user.admin){const del=document.createElement('button');del.className='btn danger small';del.textContent='Удалить';del.onclick=()=>{if(!confirm('Удалить этот комментарий?'))return;del.disabled=true;call('wlBddsDeleteComment',bddsYear,month,key,item).then(res=>{bddsData.comments[month+'|'+key]=res.messages;renderBddsView();if(bddsHistoryMode)renderBddsHistory();bddsOpenComment(month,key);}).catch(e=>{del.disabled=false;$('bddsCommentStatus').textContent='Ошибка: '+e.message;});};div.appendChild(del);}root.append(div);}
  $('bddsCommentText').value='';$('bddsCommentText').disabled=!boot.user.admin;$('bddsCommentSave').classList.toggle('hidden',!boot.user.admin);$('bddsCommentStatus').textContent='';$('bddsCommentOverlay').classList.remove('hidden');
 }
@@ -1135,9 +1140,19 @@ function bddsSaveComment(){
 function bddsLoadFact(){
  const month=$('bddsFactMonth').value;if(!boot.user.admin||!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||!month.startsWith(bddsYear+'-')){alert('Выберите месяц выбранного года');return;}
  const now=new Date(),currentMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');if(month>=currentMonth){alert('Месяц ещё не завершился. План-факт будет доступен после окончания месяца.');return;}
- if(!confirm('Получить фактические операции ФинТабло за '+monthLabel(month)+'? Данные в ФинТабло не изменяются.'))return;
- const year=bddsYear;$('bddsFetchFact').disabled=true;$('bddsStatus').textContent='Чтение фактических операций…';
- call('wlBddsFetchFact',year,month).then(res=>{if(year!==bddsYear)return;const previous=bddsFactData&&bddsFactData.year===year?bddsFactData:{year,articles:[],loadedMonths:[]},merged=new Map();previous.articles.forEach(r=>{const x={...r,byMonth:{...r.byMonth}};delete x.byMonth[month];merged.set(r.id,x);});res.articles.forEach(r=>{const old=merged.get(r.id);if(old)old.byMonth={...old.byMonth,...r.byMonth};else merged.set(r.id,r);});bddsFactData={year,articles:[...merged.values()],loadedMonths:[...new Set([...previous.loadedMonths,month])]};bddsExpandedMonths.add(month);renderBddsView();if(bddsHistoryMode)renderBddsHistory();bddsShowUnclassified(month,res.unclassified||[]);const w=res.warnings||{};if(month<'2026-11'&&year==='2026')$('bddsStatus').textContent+=' · исторический факт: показаны только однозначно сопоставленные статьи; итоги требуют проверки';if(w.uncategorized||w.ignoredCurrency||w.ignoredUnknown)$('bddsStatus').textContent+=' · не учтено: без статьи '+w.uncategorized+', валюта не рубли/неизвестна '+w.ignoredCurrency+', неясный признак '+w.ignoredUnknown;}).catch(e=>{$('bddsStatus').textContent='Не удалось получить факт: '+e.message;}).finally(()=>{$('bddsFetchFact').disabled=false;});
+ const year=bddsYear;$('bddsFetchFact').disabled=true;$('bddsStatus').textContent='Чтение отчёта ФинТабло…';
+ call('wlBddsFetchFact',year,month).then(res=>{
+  if(year!==bddsYear)return;
+  const previous=bddsFactData&&bddsFactData.year===year?bddsFactData:{year,articles:[],loadedMonths:[],departmentFacts:{}},merged=new Map();
+  previous.articles.forEach(r=>{const x={...r,byMonth:{...r.byMonth}};delete x.byMonth[month];merged.set(r.id,x);});
+  res.articles.forEach(r=>{const old=merged.get(r.id);if(old)old.byMonth={...old.byMonth,...r.byMonth};else merged.set(r.id,r);});
+  const departmentFacts={...(previous.departmentFacts||{}),[month]:Object.fromEntries(res.articles.map(r=>[r.id,r]))};
+  const matchedDepartments={...(previous.matchedDepartments||{}),[month]:res.matchedDepartments||[]};
+  bddsFactData={year,articles:[...merged.values()],loadedMonths:[...new Set([...previous.loadedMonths,month])],departmentFacts,matchedDepartments};
+  bddsExpandedMonths.add(month);renderBddsView();if(bddsHistoryMode)renderBddsHistory();
+  if((res.unmatchedDirections||[]).length)$('bddsStatus').textContent+=' · направления без однозначного отдела: '+res.unmatchedDirections.join(', ');
+  if(month<'2026-11'&&year==='2026')$('bddsStatus').textContent+=' · исторический план по отделам недоступен';
+ }).catch(e=>{$('bddsStatus').textContent='Не удалось получить факт: '+e.message;}).finally(()=>{$('bddsFetchFact').disabled=false;});
 }
 function bddsShowUnclassified(month,items){
  const panel=$('bddsUnclassified');panel.classList.toggle('hidden',!items.length);panel.open=false;if(!items.length)return;

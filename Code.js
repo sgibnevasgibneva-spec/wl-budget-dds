@@ -1132,9 +1132,9 @@ function wlGetBddsPlan(year){
   if(!category)continue;
   const normalized=wlBddsNormalize_(category),type=row.cashFlowType==='income'?'income':row.cashFlowType==='expense'?'expense':incomes.has(normalized)&&!expenses.has(normalized)?'income':'expense';
   const id=type+'|'+normalized,meta=wlBddsMeta_(type,category,grouping);
-  const item=items.get(id)||{id,category,type,activity:meta.activity,group:meta.group,byMonth:{}};
+  const item=items.get(id)||{id,category,type,activity:meta.activity,group:meta.group,byMonth:{},byDepartment:{}};
   for(const value of Object.values(row.amounts||{})){
-   const amount=Number(value);if(Number.isFinite(amount))item.byMonth[entry.key]=(item.byMonth[entry.key]||0)+amount;
+   const amount=Number(value);if(Number.isFinite(amount)){item.byMonth[entry.key]=(item.byMonth[entry.key]||0)+amount;const d=item.byDepartment[row.department]||(item.byDepartment[row.department]={});d[entry.key]=(d[entry.key]||0)+amount;}
   }
   if(meta.activity==='unclassified'&&Object.values(row.amounts||{}).some(v=>Number(v)!==0))unmapped.add((type==='income'?'Поступление: ':'Списание: ')+category);
   items.set(id,item);
@@ -1191,40 +1191,16 @@ function wlBddsFetchFact(year,requestedMonth){
  requestedMonth=wlKey_(String(requestedMonth||''));if(!requestedMonth.startsWith(year+'-'))throw Error('Выберите месяц выбранного года');
  const currentMonth=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyy-MM');if(requestedMonth>=currentMonth)throw Error('Месяц ещё не завершился. План-факт доступен после окончания месяца.');
  const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'БДДС',false);
- const token=PropertiesService.getScriptProperties().getProperty('WL_DDS_FINTABLO_API_TOKEN');
- if(!token)throw Error('Сначала сохраните ключ ФинТабло');
- const categories=wlFinTabloFetch_(),byId={};
- categories.forEach(c=>{if(c&&c.id)byId[String(c.id)]=String(c.name||c.title||'');});
- const moneybagsResponse=UrlFetchApp.fetch('https://api.fintablo.ru/v1/moneybag',{method:'get',muteHttpExceptions:true,followRedirects:false,headers:{Authorization:'Bearer '+token,Accept:'application/json'}});if(moneybagsResponse.getResponseCode()!==200)throw Error('Не удалось проверить валюты счетов ФинТабло');let bags;try{bags=JSON.parse(moneybagsResponse.getContentText()).items;}catch(_){throw Error('Некорректный ответ по счетам ФинТабло');}if(!Array.isArray(bags))throw Error('Неизвестный формат счетов ФинТабло');const currencies={};bags.forEach(b=>{if(b&&b.id)currencies[String(b.id)]=String(b.currency||'').toUpperCase();});
- const rows=[],seen=new Set(),pageSize=500,mm=requestedMonth.slice(5),lastDay=new Date(Date.UTC(Number(year),Number(mm),0)).getUTCDate();let complete=false;
- for(let page=1;page<=40;page++){
-  const resp=UrlFetchApp.fetch('https://api.fintablo.ru/v1/transaction?isPlan=0&dateFrom=01.'+mm+'.'+year+'&dateTo='+lastDay+'.'+mm+'.'+year+'&page='+page+'&pageSize='+pageSize,{method:'get',muteHttpExceptions:true,followRedirects:false,headers:{Authorization:'Bearer '+token,Accept:'application/json'}});
-  if(resp.getResponseCode()!==200)throw Error('Не удалось прочитать операции ФинТабло (HTTP '+resp.getResponseCode()+'). Факт не изменён');
-  let obj;try{obj=JSON.parse(resp.getContentText());}catch(_){throw Error('Некорректный JSON операций ФинТабло');}
-  const list=Array.isArray(obj)?obj:Array.isArray(obj.data)?obj.data:Array.isArray(obj.items)?obj.items:Array.isArray(obj.transactions)?obj.transactions:null;
-  if(!list)throw Error('Формат ответа API ФинТабло неизвестен, факт не отображён');
-  for(const r of list){if(!r||typeof r!=='object')continue;const id=String(r.id||r.transactionId||'');if(id&&seen.has(id))continue;if(id)seen.add(id);rows.push(r);}
-  if(list.length<pageSize||obj.hasNext===false||obj.hasMore===false||(obj.pagination&&obj.pagination.hasNext===false)){complete=true;break;}
+ const token=PropertiesService.getScriptProperties().getProperty('WL_DDS_FINTABLO_API_TOKEN');if(!token)throw Error('Сначала сохраните ключ ФинТабло');
+ const categories=wlFinTabloNormalize_(wlFinTabloFetch_()).candidates,grouping=wlBddsGrouping_(ss),report=wlFtReportClient_(token);
+ const articles=wlFtReportArticles_(report(requestedMonth,'category'),categories,requestedMonth,grouping),byId=new Map(articles.map(a=>[a.id,a]));
+ const dirs=report(requestedMonth,'direction'),departments=(wlDictionaries_(ss).departments||[]).map(d=>String(d.name||d)),norm=s=>wlBddsNormalize_(s),unmatched=[],matchedDepartments=[];
+ for(const direction of dirs){
+  const matches=departments.filter(d=>norm(d)===norm(direction.name)),same=dirs.filter(d=>norm(d.name)===norm(direction.name));
+  if(matches.length!==1||same.length!==1||!direction.id){unmatched.push(String(direction.name||'Без направления'));continue;}
+  matchedDepartments.push(matches[0]);
+  const details=wlFtReportArticles_(report(requestedMonth,'category',direction.id),categories,requestedMonth,grouping);
+  for(const detail of details){const item=byId.get(detail.id);if(!item)continue;if(!item.byDepartment)item.byDepartment={};item.byDepartment[matches[0]]=detail.byMonth[requestedMonth];}
  }
- if(!complete)throw Error('Достигнут лимит страниц ФинТабло. Частичный факт не отображается');
- const parentIds=new Set(rows.map(r=>String(r.parentId||'')).filter(Boolean));
- const grouping=wlBddsGrouping_(ss),articles=new Map(),unclassified=[],warnings={ignoredPlan:0,ignoredUnknown:0,ignoredTransfer:0,uncategorized:0,ignoredCurrency:0};
- for(const r of rows){
-  if(parentIds.has(String(r.id)))continue;
-  const planFlag=r.isPlan!==undefined?r.isPlan:r.isPlanned;
-  if(planFlag===true||planFlag===1||planFlag==='1'){warnings.ignoredPlan++;continue;}
-  if(planFlag!==undefined&&planFlag!==null&&planFlag!==false&&planFlag!==0&&planFlag!=='0'){warnings.ignoredUnknown++;continue;}
-  const group=String(r.group||r.type||'').toLowerCase();if(group!=='income'&&group!=='outcome'){warnings.ignoredTransfer++;continue;}
-  const currency=String(r.currency||r.currencyCode||currencies[String(r.moneybagId||'')]||'').toUpperCase();if(currency!=='RUB'&&currency!=='RUR'){warnings.ignoredCurrency++;continue;}
-  const rawDate=String(r.date||r.operationDate||r.dateFact||''),match=rawDate.match(/^(\d{2})\.(\d{2})\.(\d{4})$/),month=match?match[3]+'-'+match[2]:rawDate.slice(0,7);if(month!==requestedMonth)continue;
-  const amount=Number(r.value!==undefined?r.value:r.amount);if(!Number.isFinite(amount))continue;
-  let category=String((r.category&&typeof r.category==='object'?(r.category.name||r.category.title):'')||'').trim();
-  const catId=String(r.categoryId||r.category_id||(typeof r.category!=='object'?r.category:'')||'');if(!category)category=byId[catId]||'';
-  if(!category){warnings.uncategorized++;unclassified.push({id:String(r.id||r.transactionId||''),date:rawDate,type:group==='income'?'income':'expense',amount:Math.abs(amount),description:String(r.comment||r.description||'').slice(0,500),categoryId:catId});continue;}
-  const type=group==='income'?'income':'expense',id=type+'|'+wlBddsNormalize_(category),meta=wlBddsMeta_(type,category,grouping);
-  const found=articles.get(id)||{id,category,type,activity:meta.activity,group:meta.group,byMonth:{}};
-  found.byMonth[month]=(found.byMonth[month]||0)+Math.abs(amount);articles.set(id,found);
- }
- if(rows.length&&warnings.ignoredUnknown===rows.length)throw Error('В API отсутствует надёжный признак план/факт. Факт не показан');
- return {year,month:requestedMonth,articles:[...articles.values()],unclassified,totalTransactions:rows.length,warnings,readOnly:true};
+ return {year,month:requestedMonth,articles,unmatchedDirections:unmatched,matchedDepartments,readOnly:true};
 }

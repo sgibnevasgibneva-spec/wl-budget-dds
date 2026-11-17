@@ -1,0 +1,11 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const code=fs.readFileSync('FinTabloReport.js','utf8');
+const ctx={wlBddsNormalize_:s=>s.toLowerCase(),wlBddsMeta_:()=>({activity:'operating',group:'x'})};vm.createContext(ctx);vm.runInContext(code,ctx);
+const dict=[{id:1,name:'Sales',group:'income'},{id:2,name:'Salary',group:'outcome'}];
+const groups=[{id:1,amount:{RUB:120}},{id:99,total:{RUB:-90},items:[{id:2,amount:{RUB:-90}}]}];
+const result=ctx.wlFtReportArticles_(groups,dict,'2026-10',{});
+assert.equal(result.length,2);assert.equal(result[0].byMonth['2026-10'],120);assert.equal(result[1].byMonth['2026-10'],90);
+assert.throws(()=>ctx.wlFtReportArticles_([{id:1,amount:{USD:1}}],dict,'2026-10',{}));
+assert.throws(()=>ctx.wlFtReportArticles_([{id:3,name:'Unknown',amount:{RUB:1}}],dict,'2026-10',{}));
+assert.throws(()=>ctx.wlFtReportArticles_([{id:1,amount:{RUB:1}},{id:4,amount:{RUB:2}}],[...dict,{id:4,name:'Sales',group:'income'}],'2026-10',{}));
+console.log('Report: nested categories counted once, currency and ambiguous categories rejected');

@@ -12,19 +12,33 @@ function wlFinTabloSetToken_(token){
   const ss=wlStore_();wlAdmin_(ss);
   const value=String(token||'').trim();
   if(!/^[A-Za-z0-9_.-]{12,240}$/.test(value))throw Error('Некорректный формат API-ключа');
+  // Do not replace a working key with a mistyped or revoked one.
+  wlFinTabloFetchWithToken_(value);
   PropertiesService.getScriptProperties().setProperty(WL_FT_TOKEN_PROP_,value);
   return {saved:true};
 }
 function wlFinTabloFetch_(){
   const token=PropertiesService.getScriptProperties().getProperty(WL_FT_TOKEN_PROP_);
   if(!token)throw Error('Сначала сохраните ключ ФинТабло в разделе «Справочники»');
+  return wlFinTabloFetchWithToken_(token);
+}
+function wlFinTabloApiError_(res){
+  const code=res.getResponseCode();let reason='';try{reason=String(JSON.parse(res.getContentText()).reason||'');}catch(_){}
+  if(code===401&&reason==='legacy_key_expired')return 'Ключ ФинТабло устарел. Нужен действующий API-ключ из раздела «Интеграции».';
+  if(code===401&&reason==='key_reissued')return 'ФинТабло сообщает, что ключ перевыпущен. Нужен действующий ключ из раздела «Интеграции».';
+  if(code===401)return 'ФинТабло отклонил API-ключ (HTTP 401). Проверьте, что используется действующий ключ нужной компании.';
+  if(code===403)return 'ФинТабло не разрешил доступ по этому ключу (HTTP 403). Проверьте права и настройки интеграции.';
+  if(code===429)return 'ФинТабло ограничил частоту запросов (HTTP 429). Повторите проверку позже.';
+  return 'ФинТабло не вернул справочник (HTTP '+code+'). Повторите проверку.';
+}
+function wlFinTabloFetchWithToken_(token){
   // ВАЖНО: только GET; никогда не пересылаем ключ браузеру, в логах нет токена.
   const res=UrlFetchApp.fetch(WL_FT_ENDPOINT_,{
     method:'get',muteHttpExceptions:true,followRedirects:false,
     headers:{Authorization:'Bearer '+token,Accept:'application/json'}
   });
   const code=res.getResponseCode();
-  if(code!==200)throw Error('ФинТабло не вернул справочник (HTTP '+code+'). Проверьте ключ и разрешение UrlFetchApp. Никаких данных не изменено.');
+  if(code!==200)throw Error(wlFinTabloApiError_(res));
   let body;try{body=JSON.parse(res.getContentText());}catch(_){throw Error('ФинТабло вернул некорректный JSON');}
   let list=Array.isArray(body)?body:(Array.isArray(body.data)?body.data:(Array.isArray(body.items)?body.items:(Array.isArray(body.categories)?body.categories:null)));
   if(!list||!list.length)throw Error('API вернул пустой или неизвестный формат справочника. Применение отменено.');

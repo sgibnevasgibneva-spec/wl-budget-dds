@@ -1,6 +1,8 @@
 function wlRpc(token,name,args){
- const email=wlAuthSession_(token);if(!Array.isArray(args)||args.length>10)throw Error('Некорректный запрос');
+ const dispatch=()=>{
+ const requestStarted=Date.now(),email=wlAuthSession_(token),authenticated=Date.now();if(!Array.isArray(args)||args.length>10)throw Error('Некорректный запрос');
  const methods={
+ "wlStartup":wlStartup_,
  "wlMigrateLoginTriggers":wlMigrateLoginTriggers_,
 "wlGenerateLoginCode":wlGenerateLoginCode_,
 "wlApplyExcelRoundTrip":wlApplyExcelRoundTrip_,
@@ -47,5 +49,7 @@ function wlRpc(token,name,args){
 "wlYearArchiveStatus":wlYearArchiveStatus_,
 "wlYearManage":wlYearManage_
  };if(!Object.prototype.hasOwnProperty.call(methods,name))throw Error('Неизвестная команда');
- WL_AUTH_EMAIL=email;try{return methods[name](...args);}finally{WL_AUTH_EMAIL='';}
+ WL_AUTH_EMAIL=email;try{const result=methods[name](...args);if(name==='wlStartup')result.timing={...result.timing,authMs:authenticated-requestStarted,requestServerMs:Date.now()-requestStarted};return result;}finally{WL_AUTH_EMAIL='';}
+ };
+ return name==='wlStartup'?wlReadSnapshot_(dispatch):dispatch();
 }

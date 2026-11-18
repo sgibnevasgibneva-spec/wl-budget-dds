@@ -1,0 +1,12 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert'),crypto=require('crypto').webcrypto;
+const h=fs.readFileSync('Index.html','utf8'),store=new Map();let token='first-session';
+const c={crypto,TextEncoder,Uint8Array,Date,authGet:()=>token,localStorage:{getItem:k=>store.get(k)||null,setItem:(k,v)=>store.set(k,v),removeItem:k=>store.delete(k)}};
+vm.createContext(c);vm.runInContext(h.slice(h.indexOf('async function startupTokenHash('),h.indexOf('function startupInteraction(')),c);
+(async()=>{const data={boot:{current:'2026-11',user:{view:['HR'],tabs:['Отделы']}},month:{key:'2026-11',rows:[{department:'HR',amounts:{1:100}}]}};
+await c.startupCacheWrite(token,data);assert.equal((await c.startupCacheRead(token)).month.rows[0].amounts[1],100);
+assert.equal(await c.startupCacheRead('another-session'),null);assert(!store.values().next().value.includes(token));
+const saved=JSON.parse(store.get('wl_startup_snapshot_v1'));saved.data.month.rows[0].department='IT';store.set('wl_startup_snapshot_v1',JSON.stringify(saved));assert.equal(await c.startupCacheRead(token),null);
+await c.startupCacheWrite(token,data);const old=JSON.parse(store.get('wl_startup_snapshot_v1'));old.savedAt-=3*60*60*1000;store.set('wl_startup_snapshot_v1',JSON.stringify(old));assert.equal(await c.startupCacheRead(token),null);
+c.localStorage.setItem=()=>{throw Error('quota');};await c.startupCacheWrite(token,data);
+console.log('Browser cache bound to session and departments, expires, and gracefully handles unavailable storage');
+})().catch(e=>{console.error(e);process.exitCode=1;});

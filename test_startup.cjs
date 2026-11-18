@@ -1,0 +1,10 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const count={};let allowed=true,fail=false;
+const hit=k=>{count[k]=(count[k]||0)+1;};
+const c={Date,wlStore_:()=>{hit('store');return {};},wlRules_:()=>{hit('rules');return [{allowed}];},wlDictionaries_:()=>{hit('dict');return {departments:['HR','IT']};},wlMonthList_:()=>{hit('months');return [{key:'2026-11'}];},wlUser_:()=>{hit('user');if(!c.wlRules_().some(x=>x.allowed))throw Error('revoked');c.wlDictionaries_();return {tabs:['Отделы'],view:['HR']};},wlBoot_:()=>{c.wlStore_();const user=c.wlUser_(),dict=c.wlDictionaries_();dict.departments=['HR'];c.wlMonthList_();return {user,dict,current:'2026-11'};},wlGetMonth_:key=>{c.wlStore_();c.wlUser_();c.wlMonthList_();c.wlMonthList_();assert.equal(c.wlDictionaries_().departments.length,2);if(fail)throw Error('read failed');return {key,rows:[{department:'HR'}]};}};
+const originals={...c};vm.createContext(c);vm.runInContext(fs.readFileSync('Startup.js','utf8'),c);
+const data=c.wlReadSnapshot_(()=>c.wlStartup_());assert.equal(data.month.key,data.boot.current);for(const k of ['store','rules','dict','months','user'])assert.equal(count[k],1,k+' read only once');
+for(const k of ['wlStore_','wlRules_','wlDictionaries_','wlMonthList_','wlUser_'])assert.equal(c[k],originals[k]);
+allowed=false;assert.throws(()=>c.wlReadSnapshot_(()=>c.wlStartup_()),/revoked/);allowed=true;fail=true;assert.throws(()=>c.wlReadSnapshot_(()=>c.wlStartup_()),/read failed/);
+for(const k of ['wlStore_','wlRules_','wlDictionaries_','wlMonthList_','wlUser_'])assert.equal(c[k],originals[k]);
+console.log('Startup bundles month and boot; one read per reference set; no permission cache between requests; cleanup after failures');

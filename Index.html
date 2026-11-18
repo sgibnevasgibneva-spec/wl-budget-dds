@@ -311,8 +311,8 @@ const money=n=>fmt.format(truncateToKopecks(n));
 const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const genId=()=>typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID():'row-'+Date.now()+'-'+Math.random().toString(36).slice(2);
 function authGet(){try{const v=localStorage.getItem('wl_auth_token');if(v)return v;const old=sessionStorage.getItem('wl_auth_token');if(old){localStorage.setItem('wl_auth_token',old);sessionStorage.removeItem('wl_auth_token');}return old||'';}catch(_){try{return sessionStorage.getItem('wl_auth_token')||'';}catch(_){return '';}}}
-function authSet(token){try{localStorage.setItem('wl_auth_token',token);sessionStorage.removeItem('wl_auth_token');}catch(_){sessionStorage.setItem('wl_auth_token',token);}}
-function authClear(){try{localStorage.removeItem('wl_auth_token');}catch(_){}try{sessionStorage.removeItem('wl_auth_token');}catch(_){}}
+function authSet(token){try{if(localStorage.getItem('wl_auth_token')!==token)localStorage.removeItem('wl_startup_snapshot_v1');localStorage.setItem('wl_auth_token',token);sessionStorage.removeItem('wl_auth_token');}catch(_){sessionStorage.setItem('wl_auth_token',token);}}
+function authClear(){try{localStorage.removeItem('wl_startup_snapshot_v1');localStorage.removeItem('wl_auth_token');}catch(_){}try{sessionStorage.removeItem('wl_auth_token');}catch(_){}}
 function call(name,...args){return new Promise((resolve,reject)=>{if(!window.google||!google.script||!google.script.run){reject(new Error('Для работы с сервером откройте опубликованное приложение Apps Script'));return;}google.script.run.withSuccessHandler(resolve).withFailureHandler(e=>{if(/Сеанс истёк|Войдите в приложение/.test(String(e&&e.message||e))){authClear();$('loginCover').classList.remove('hidden');$('loginStatus').textContent='Сеанс закончился. Войдите снова.';}reject(e);}).wlRpc(authGet(),name,args);});}
 let selectedRowIds=new Set(), selectedTrashEntries=new Set(), importPrepared=null, importFileName='', summaryText='', summaryDepartment='';
 let ftBudgetState=null;
@@ -590,7 +590,7 @@ function makeRow(r){const tr=document.createElement('tr');tr.dataset.rowId=r.id;
  const total=document.createElement('td');total.className='money-total';total.textContent=money(rowSum(r));tr.appendChild(total);
  const act=document.createElement('td');act.className='actioncell';const del=document.createElement('button');del.className='delete-row';del.title='Удалить строку из выбранного месяца';del.textContent='🗑 Удалить';del.disabled=!canEdit();del.onclick=()=>removeRow(r);act.appendChild(del);tr.appendChild(act);
  return tr;}
-function renderRows(){tableHead();const body=$('ledgerBody');body.innerHTML='';const own=rows.filter(r=>r.department===dept);own.forEach(r=>body.appendChild(makeRow(r)));if(!own.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=numDays()+7;td.style.cssText='padding:26px;color:#8090a2;text-align:center';td.textContent='В этом отделе пока нет строк. Добавьте первую строку.';tr.appendChild(td);body.appendChild(tr);}
+function renderRows(){tableHead();const body=$('ledgerBody');body.innerHTML='';const own=rows.filter(r=>r.department===dept),fragment=document.createDocumentFragment();own.forEach(r=>fragment.appendChild(makeRow(r)));body.appendChild(fragment);if(!own.length){const tr=document.createElement('tr');const td=document.createElement('td');td.colSpan=numDays()+7;td.style.cssText='padding:26px;color:#8090a2;text-align:center';td.textContent='В этом отделе пока нет строк. Добавьте первую строку.';tr.appendChild(td);body.appendChild(tr);}
  departmentOptions();refreshBulkUi();renderDeptSummary();}
 function openCategory(button,row){catTarget={button,row};const panel=$('catPanel'),r=button.getBoundingClientRect(),left=Math.min(r.left,window.innerWidth-345);panel.style.left=Math.max(10,left)+'px';panel.style.top=Math.min(r.bottom+4,window.innerHeight-350)+'px';panel.classList.remove('hidden');$('catSearch').value='';renderCategoryOptions();$('catSearch').focus();}
 function closeCategory(){catTarget=null;$('catPanel').classList.add('hidden');}
@@ -664,7 +664,7 @@ function loadMonth(){
    loading=false;periodStatus();rememberMonth(key,result);
    renderRows();renderSummary();status('Сохранено ✓');
    console.info('WL_PERF month UI '+key+' '+Math.round(performance.now()-startTime)+'ms');
- }).catch(e=>{if(version!==loadVersion)return;loading=false;showError(e);status('Ошибка загрузки — данные не обновлены',true);});
+ }).catch(e=>{if(version!==loadVersion)return;loading=true;renderRows();showError(e);status('Ошибка загрузки — редактирование недоступно',true);});
 }
 function removeRow(r){
  if(!canEdit())return;
@@ -899,7 +899,82 @@ function wire(){
 }
 function loginCall(name,...args){return new Promise((resolve,reject)=>google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args));}
 function start(){wire();$('loginLogout').onclick=()=>{const token=authGet();authClear();loginCall('wlLogout',token).finally(()=>location.reload());};const token=authGet();if(token){$('loginCover').classList.add('hidden');startApp();}else $('loginCover').classList.remove('hidden');$('loginVerify').onclick=()=>{const email=$('loginEmail').value.trim(),code=$('loginCode').value.trim();$('loginVerify').disabled=true;loginCall('wlVerifyLogin',email,code).then(r=>{authSet(r.token);$('loginCover').classList.add('hidden');startApp();}).catch(e=>{$('loginStatus').textContent=e.message;}).finally(()=>{$('loginVerify').disabled=false;});};}
-function startApp(){function updateSticky(){const h=document.querySelector('header'),t=document.querySelector('#deptView>.toolbar');if(h)document.documentElement.style.setProperty('--wl-header-height',h.offsetHeight+'px');if(t)document.documentElement.style.setProperty('--wl-toolbar-height',t.offsetHeight+'px');}updateSticky();window.addEventListener('resize',updateSticky);if(typeof ResizeObserver!=='undefined'){const ro=new ResizeObserver(updateSticky);ro.observe(document.querySelector('header'));ro.observe(document.querySelector('#deptView>.toolbar'));}call('wlBoot').then(data=>{boot=data;if(data.user&&data.user.admin)call('wlMigrateLoginTriggers').catch(e=>{const p=document.createElement('p');p.className='archive-help';p.textContent='Не удалось восстановить автоматические задачи: '+String(e.message||e);$('settingsView').prepend(p);});months=data.months||[];dict=data.dict||dict;monthKey=nearestAvailableCurrentMonth(months,data.current);bddsYear=monthKey.slice(0,4);bddsExpandedMonths=new Set([monthKey]);dept=boot.user.view[0]||'';$('summaryDept').innerHTML='<option value="">Все доступные отделы</option>'+boot.user.view.map(d=>'<option value="'+esc(d)+'">'+esc(d)+'</option>').join('');if(!months.length)throw Error('Нет доступных месяцев');renderYearOptions();if(!boot.user.tabs.includes(activeTab))activeTab=boot.user.tabs[0]||'Инструкция';document.querySelectorAll('.admin-only').forEach(n=>n.classList.toggle('hidden',!boot.user.admin));if(!boot.user.admin)$('settingsView').classList.add('hidden');selectMonths();tabs();views();if(boot.user.tabs.includes('Отделы')||boot.user.tabs.includes('ЦФО'))loadMonth();else if(boot.user.tabs.includes('БДДС'))renderBdds();else status('Доступ к разделам бюджета не предоставлен');refreshReviewCount();}).catch(e=>{$('deptView').classList.add('hidden');showError(e);});}
+let startupRun=0,startupLayoutReady=false;
+async function startupTokenHash(token){
+ const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(token));
+ return Array.from(new Uint8Array(bytes),n=>n.toString(16).padStart(2,'0')).join('');
+}
+async function startupCacheRead(token){
+ try{
+  const saved=JSON.parse(localStorage.getItem('wl_startup_snapshot_v1')||'null');
+  if(!saved||saved.version!==1||Date.now()-saved.savedAt>2*60*60*1000||saved.savedAt>Date.now()||saved.owner!==await startupTokenHash(token))return null;
+  const data=saved.data,user=data&&data.boot&&data.boot.user;
+  if(!user||!Array.isArray(user.view)||!Array.isArray(user.tabs)||!data.month||data.month.key!==data.boot.current||!data.month.rows.every(r=>user.view.includes(r.department)))return null;
+  return data;
+ }catch(_){return null;}
+}
+async function startupCacheWrite(token,data){
+ try{
+  if(!data.month)return;
+  const owner=await startupTokenHash(token);if(authGet()!==token)return;
+  const text=JSON.stringify({version:1,owner,savedAt:Date.now(),data});
+  if(text.length<1500000)localStorage.setItem('wl_startup_snapshot_v1',text);
+  else localStorage.removeItem('wl_startup_snapshot_v1');
+ }catch(_){/* A full or unavailable browser store must not prevent login. */}
+}
+function startupInteraction(locked){
+ const header=document.querySelector('header');if(header)header.inert=locked;
+ VIEWS.forEach(id=>{$(id).inert=locked;});
+}
+function applyStartup(data,preview){
+ boot=data.boot;months=boot.months||[];dict=boot.dict||dict;
+ monthKey=boot.current;bddsYear=monthKey.slice(0,4);bddsExpandedMonths=new Set([monthKey]);
+ if(!months.some(m=>m.key===monthKey))throw Error('Нет доступного месяца');
+ if(!boot.user.view.includes(dept))dept=boot.user.view[0]||'';
+ loading=preview;rows=data.month?data.month.rows:[];
+ $('summaryDept').innerHTML='<option value="">Все доступные отделы</option>'+boot.user.view.map(d=>'<option value="'+esc(d)+'">'+esc(d)+'</option>').join('');
+ if(!boot.user.tabs.includes(activeTab))activeTab=boot.user.tabs[0]||'Инструкция';
+ document.querySelectorAll('.admin-only').forEach(n=>n.classList.toggle('hidden',!boot.user.admin));
+ renderYearOptions();selectMonths();tabs();
+ VIEWS.forEach((id,i)=>$(id).classList.toggle('hidden',activeTab!==TABS[i]));
+ if(data.month){
+  if(data.month.key!==monthKey)throw Error('Получены данные другого месяца');
+  closed=data.month.month.status==='Закрыт';renderRows();
+  if(!preview)rememberMonth(monthKey,data.month);
+ }
+ startupInteraction(preview);
+ status(preview?'Сохранённый просмотр · проверяем актуальность…':'Сохранено ✓');
+ if(!preview)views();
+}
+function startApp(){
+ const run=++startupRun,token=authGet(),started=performance.now();let settled=false;
+ loading=true;startupInteraction(true);status('Загружаем бюджет…');hideError();
+ if(!startupLayoutReady){
+  startupLayoutReady=true;
+  const updateSticky=()=>{const h=document.querySelector('header'),t=document.querySelector('#deptView>.toolbar');if(h)document.documentElement.style.setProperty('--wl-header-height',h.offsetHeight+'px');if(t)document.documentElement.style.setProperty('--wl-toolbar-height',t.offsetHeight+'px');};
+  updateSticky();window.addEventListener('resize',updateSticky);
+  if(typeof ResizeObserver!=='undefined'){const ro=new ResizeObserver(updateSticky);for(const el of [document.querySelector('header'),document.querySelector('#deptView>.toolbar')])if(el)ro.observe(el);}
+ }
+ // Start the only required round trip immediately; disk preview never delays it.
+ const request=call('wlStartup');
+ startupCacheRead(token).then(data=>{if(data&&!settled&&run===startupRun&&authGet()===token){try{applyStartup(data,true);}catch(_){}}});
+ request.then(data=>{
+  settled=true;if(run!==startupRun||authGet()!==token)return;
+  const received=performance.now();applyStartup(data,false);
+  const timing={...data.timing,requestMs:Math.round(received-started),renderMs:Math.round(performance.now()-received),readyMs:Math.round(performance.now()-started)};
+  window.WL_STARTUP_TIMING=timing;console.info('WL_STARTUP_TIMING '+JSON.stringify(timing));
+  $('saveStatus').title='Бюджет готов за '+(timing.readyMs/1000).toFixed(2)+' с после начала загрузки данных';
+  startupCacheWrite(token,data);
+  setTimeout(()=>{if(run===startupRun&&authGet()===token)refreshReviewCount();},3000);
+ }).catch(e=>{
+  settled=true;if(run!==startupRun)return;
+  try{localStorage.removeItem('wl_startup_snapshot_v1');}catch(_){}
+  rows=[];VIEWS.forEach(id=>$(id).classList.add('hidden'));startupInteraction(true);
+  showError(e);status('Не удалось загрузить бюджет',true);
+  if(!authGet()){$('loginCover').classList.remove('hidden');$('loginStatus').textContent='Войдите снова.';}else{const retry=document.createElement('button');retry.className='btn';retry.textContent='Повторить загрузку';retry.onclick=startApp;$('errorPanel').appendChild(retry);}
+ });
+}
+
 
 function refreshBulkUi(){
  const own=rows.filter(r=>r.department===dept),ids=new Set(own.map(r=>r.id));

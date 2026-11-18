@@ -1205,5 +1205,5 @@ function wlBddsFetchFact(year,requestedMonth){
   const details=wlFtReportArticles_(report(requestedMonth,'category',direction.id),categories,requestedMonth,grouping);
   for(const detail of details){const item=byId.get(detail.id);if(!item)continue;if(!item.byDepartment)item.byDepartment={};item.byDepartment[matches[0]]=detail.byMonth[requestedMonth];}
  }
- return {year,month:requestedMonth,articles,unmatchedDirections:unmatched,matchedDepartments,readOnly:true};
+ const result={year,month:requestedMonth,articles,unmatchedDirections:unmatched,matchedDepartments,readOnly:true,loadedAt:new Date().toISOString()};wlBddsStoreFact_(ss,result);return result;
 }

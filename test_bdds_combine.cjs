@@ -6,7 +6,7 @@ el.bddsHead.appendChild(row('Показатель',month('2026-11')));el.bddsHea
 el.bddsHistoryHead.appendChild(row('Показатель',month('2026-10')));el.bddsHistoryHead.appendChild(row('План'));
 el.bddsBody.appendChild(row('Продажи','200'));el.bddsBody.appendChild(row('Поступления','250'));
 el.bddsHistoryBody.appendChild(row('Продажи','100'));el.bddsHistoryBody.appendChild(row('Поступления','80'));el.bddsHistoryBody.appendChild(row('Поступления','20'));el.bddsHistoryBody.appendChild(row('Старая статья','30'));
-const s=fs.readFileSync('Index.html','utf8'),src=s.slice(s.indexOf('function bddsCombineTables(){'),s.indexOf('function bddsDscr('));const ctx={document:{createElement:t=>new Node(t)},$:id=>el[id],bddsHistoryMode:true,bddsHistoryData:{},bddsExpandedMonths:new Set()};vm.createContext(ctx);vm.runInContext(src,ctx);ctx.bddsCombineTables();
+const s=fs.readFileSync('Index.html','utf8'),src=s.slice(s.indexOf('function bddsCombineTables(){'),s.indexOf('function bddsDscr('));const ctx={document:{createElement:t=>new Node(t)},$:id=>el[id],bddsHistoryMode:true,bddsHistoryData:{},bddsExpandedMonths:new Set(),bddsFocusTarget:''};vm.createContext(ctx);vm.runInContext(src,ctx);ctx.bddsCombineTables();
 assert.deepEqual(el.bddsCombinedHead.rows[0].cells.map(c=>c.textContent),['Показатель','2026-10','2026-11']);
 assert.deepEqual(el.bddsCombinedBody.rows[0].cells.map(c=>c.textContent),['Продажи','100','200']);
 assert.deepEqual(el.bddsCombinedBody.rows[1].cells.map(c=>c.textContent),['Поступления','—','250']);

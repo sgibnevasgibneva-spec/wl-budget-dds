@@ -182,8 +182,8 @@ header{flex:0 0 auto;position:relative;top:auto}
 .bdds-comment-alert{background:#fee2e2!important;color:#b91c1c!important;border:1px solid #ef4444!important;border-radius:5px;font-weight:700}
 
 /* Keep current and historical reports visible and keep long text inside its cell. */
-#bddsView{display:block;overflow:auto;min-height:0}
-#bddsView>.sumscroll,#bddsHistoryPanel>.sumscroll{height: min(55vh, 560px);min-height:260px;max-height:none;overflow:auto}
+#bddsView{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+#bddsView>#bddsCombinedView{flex:1;min-height:220px;height:auto;max-height:none;overflow:auto}
 .bdds-table td.bdds-comment-cell{white-space:normal;overflow-wrap:anywhere;word-break:break-word;min-width:160px;max-width:220px;line-height:1.45}
 .bdds-table td.bdds-comment-cell span,.bdds-table td.bdds-comment-cell button{display:block;max-width:100%;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
 .sumtable .catcol,.sumtable th,.sumtable td:not(.num),.ft-review td,.ft-review th,.chip,.status,.subtle{overflow-wrap:anywhere;word-break:normal;white-space:normal}
@@ -213,7 +213,7 @@ header{flex:0 0 auto;position:relative;top:auto}
  <div id="bddsHistoryPanel" class="hidden"><table class="sumtable bdds-table"><thead id="bddsHistoryHead"></thead><tbody id="bddsHistoryBody"></tbody></table></div>
  <div class="sumscroll" id="bddsCombinedView"><table class="sumtable bdds-table"><thead id="bddsCombinedHead"></thead><tbody id="bddsCombinedBody"></tbody></table></div>
  <details id="bddsUnclassified" class="hidden" style="margin:16px"><summary id="bddsUnclassifiedTitle"></summary><p class="subtle">Эти операции не включены в план-факт. Проверьте статьи в ФинТабло и загрузите факт повторно.</p><div class="sumscroll" style="max-height:300px"><table class="sumtable"><thead><tr><th>Дата</th><th>Тип</th><th>Сумма</th><th>Описание</th><th>Причина</th><th>ID операции</th></tr></thead><tbody id="bddsUnclassifiedBody"></tbody></table></div></details>
- <p class="subtle bdds-footnote">Факт и отклонения станут доступны после подключения чтения фактических операций из ФинТабло. Нажмите на месяц, чтобы раскрыть План/Факт/Отклонение. Нераспознанные статьи остаются отдельно для проверки, чтобы суммы не потерялись.</p>
+ <p class="subtle bdds-footnote">Нажмите на месяц, чтобы раскрыть план, факт и комментарии. Загруженный факт сохраняется в приложении.</p>
 </section>
 <div class="note-modal-bg hidden" id="bddsCommentOverlay" role="presentation"><div class="note-modal" role="dialog" aria-modal="true">
  <h3>Комментарии БДДС</h3><p id="bddsCommentContext"></p><div class="comment-history" id="bddsCommentHistory" style="max-height:220px;overflow:auto"></div>
@@ -318,7 +318,7 @@ const genId=()=>typeof crypto!=='undefined'&&crypto.randomUUID?crypto.randomUUID
 function call(name,...args){return new Promise((resolve,reject)=>{if(!window.google||!google.script||!google.script.run){reject(new Error('Для работы с сервером откройте опубликованное приложение Apps Script'));return;}google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](...args);});}
 let selectedRowIds=new Set(), selectedTrashEntries=new Set(), importPrepared=null, importFileName='', summaryText='', summaryDepartment='';
 let ftBudgetState=null;
-let cfoCollapsed=false,cfoDepartmentsCollapsed=false,bddsCollapsed=false,bddsData=null,bddsYear='',bddsFactData=null,bddsExpandedMonths=new Set(),bddsCommentTarget=null,bddsHistoryMode=false,bddsHistoryData=null,cfoFundsByYear={};
+let cfoCollapsed=false,cfoDepartmentsCollapsed=false,bddsCollapsed=false,bddsData=null,bddsYear='',bddsFactData=null,bddsExpandedMonths=new Set(),bddsCommentTarget=null,bddsHistoryMode=false,bddsHistoryData=null,cfoFundsByYear={},bddsSavedYears={},bddsFocusTarget='';
 /* Единый шаблон генерируется тем же кодом, что выгрузка отдела. */
 let noteTarget=null;
 let boot=null,months=[],monthKey='2026-11',rows=[],dict={departments:[],payments:[],sources:[],categories:[]},dept='',activeTab='Отделы',summaryMode='monthly',deptMode='expenses';
@@ -1048,6 +1048,7 @@ function renderBdds(force){
  if(!bddsYear){$('bddsStatus').textContent='Нет текущих лет БДДС';$('bddsHead').innerHTML='';$('bddsBody').innerHTML='';return;}
  bddsHistoryMode=bddsYear==='2026'&&boot.user.admin;bddsHistoryControls();
  if(bddsHistoryMode){const requested=bddsYear;if(bddsHistoryData&&!force)renderBddsHistory();else call('wlBddsHistorical2026').then(data=>{bddsHistoryData=data;if(bddsHistoryMode&&bddsYear===requested)renderBddsHistory();}).catch(e=>{$('bddsHistoryBody').innerHTML='<tr><td>Не удалось загрузить исторический БДДС: '+esc(e.message||e)+'</td></tr>';});}
+ bddsRestoreSavedFacts(bddsYear);
  if(bddsData&&bddsData.year===bddsYear&&!force){renderBddsView();return;}
  const year=bddsYear;$('bddsStatus').textContent='Загружаем '+year+' год…';
  call('wlGetBddsPlan',year).then(res=>{if(bddsYear!==year)return;bddsData=res;renderBddsView();if(bddsHistoryMode)renderBddsHistory();}).catch(e=>{$('bddsStatus').textContent='Ошибка: '+(e.message||e);});
@@ -1056,7 +1057,7 @@ function bddsHistoryControls(){$('bddsFold').classList.remove('hidden');$('bddsF
 function renderBddsHistory(){
  const data=bddsHistoryData;if(!data)return;const indices=data.months.map((m,i)=>({m,i})).filter(x=>x.m>='2026-01'&&x.m<='2026-10'),expanded=bddsExpandedMonths;
  $('bddsHistoryHead').innerHTML='<tr><th class="catcol" rowspan="2">Показатель</th>'+indices.map(({m})=>'<th class="bdds-month-head" colspan="'+(expanded.has(m)?5:1)+'"><button class="bdds-month-toggle" data-expand-month="'+m+'">'+(expanded.has(m)?'− ':'+ ')+monthsRu[Number(m.slice(5))-1]+'</button></th>').join('')+'</tr><tr>'+indices.map(({m})=>expanded.has(m)?'<th>План</th><th>Факт</th><th>Откл.</th><th>%</th><th>Комментарий</th>':'<th>План</th>').join('')+'</tr>';
- const occurrences={},nameCount={},groupNames=new Set(Object.values((boot.grouping||{}).options||{}).flat().map(x=>String(cfoGroupCaption(x)||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim()));data.rows.forEach(row=>{const k=String(row.label||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim();nameCount[k]=(nameCount[k]||0)+1;});$('bddsHistoryBody').innerHTML=data.rows.filter(row=>!/^\s*(бддс\s*цфо\s*\/\s*ддс|целевой резервный фонд|резерв на закупки новинок|минимальный cash balance|фонды на начало периода|фонды на конец периода)/i.test(String(row.label||''))).map(row=>{const norm=String(row.label||'').toLocaleLowerCase('ru'),occ=occurrences[norm]=(occurrences[norm]||0)+1,key='history|'+norm.slice(0,180)+'|'+occ,style=/сальдо|чистый денежный поток|dscr|бддс цфо/.test(norm)?'bdds-net':/^(поступления|списания|выплаты)$/.test(norm.trim())?'bdds-subtotal':groupNames.has(norm.replace(/ё/g,'е').replace(/\s+/g,' ').trim())?'bdds-group':'';return '<tr class="'+style+'"><td class="catcol">'+esc(row.label)+'</td>'+indices.map(({m,i})=>{const cells=row.cells[i]||[],factLoaded=!!(bddsFactData&&bddsFactData.year===bddsYear&&(bddsFactData.loadedMonths||[]).includes(m)),labelKey=norm.replace(/ё/g,'е').replace(/\s+/g,' ').trim(),matches=factLoaded&&!style&&nameCount[labelKey]===1?(bddsFactData.articles||[]).filter(r=>String(r.category||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim()===labelKey):[],matched=matches.length===1?matches[0]:null,amount=matched?Number((matched.byMonth||{})[m]||0):null,planText=String(cells[0]||'').replace(/[\s\u00a0\u202f]/g,'').replace(',','.'),planned=/^-?\d+(?:\.\d+)?$/.test(planText)?Number(planText):null,historyDetails=factLoaded?(matched&&planned!==null?[money(amount),money(amount-planned),planned?money(100*(amount-planned)/Math.abs(planned))+'%':'—']:['—','—','—']):cells.slice(1,4),notes=((bddsData&&bddsData.comments)||{})[m+'|'+key]||[],last=notes[notes.length-1],source=String(cells[4]||'').trim(),needsExplanation=matched&&planned!==null&&(Math.abs(planned)<0.005?Math.abs(amount)>=0.005:Math.abs((amount-planned)/planned)>0.2),comment=(source?'<span title="Комментарий из исходного файла">'+esc(source)+' </span>':'')+(boot.user.admin?'<button class="bdds-comment-button'+(needsExplanation?' bdds-comment-alert':'')+'" type="button" data-comment-key="'+esc(encodeURIComponent(key))+'" data-comment-month="'+m+'">'+(last?esc(last.text):'Добавить')+'</button>':'');return '<td class="num bdds-month-start">'+esc(cells[0]||'—')+'</td>'+(expanded.has(m)?historyDetails.map(v=>'<td class="num">'+esc(v||'—')+'</td>').join('')+'<td class="bdds-comment-cell">'+comment+'</td>':'');}).join('')+'</tr>';}).join('');
+ const occurrences={},nameCount={},groupNames=new Set(Object.values((boot.grouping||{}).options||{}).flat().map(x=>String(cfoGroupCaption(x)||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim()));data.rows.forEach(row=>{const k=String(row.label||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim();nameCount[k]=(nameCount[k]||0)+1;});$('bddsHistoryBody').innerHTML=data.rows.filter(row=>!/^\s*(бддс\s*цфо\s*\/\s*ддс|целевой резервный фонд|резерв на закупки новинок|минимальный cash balance|фонды на начало периода|фонды на конец периода|сальдо по |чистый денежный поток|dscr|изменение\s+денежного потока|динамика\s*,?\s*%)/i.test(String(row.label||''))).map(row=>{const norm=String(row.label||'').toLocaleLowerCase('ru'),occ=occurrences[norm]=(occurrences[norm]||0)+1,key='history|'+norm.slice(0,180)+'|'+occ,style=/сальдо|чистый денежный поток|dscr|бддс цфо/.test(norm)?'bdds-net':/^(поступления|списания|выплаты)$/.test(norm.trim())?'bdds-subtotal':groupNames.has(norm.replace(/ё/g,'е').replace(/\s+/g,' ').trim())?'bdds-group':'';return '<tr class="'+style+'"><td class="catcol">'+esc(row.label)+'</td>'+indices.map(({m,i})=>{const cells=row.cells[i]||[],factLoaded=!!(bddsFactData&&bddsFactData.year===bddsYear&&(bddsFactData.loadedMonths||[]).includes(m)),labelKey=norm.replace(/ё/g,'е').replace(/\s+/g,' ').trim(),matches=factLoaded&&!style&&nameCount[labelKey]===1?(bddsFactData.articles||[]).filter(r=>String(r.category||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim()===labelKey):[],matched=matches.length===1?matches[0]:null,amount=matched?Number((matched.byMonth||{})[m]||0):null,planText=String(cells[0]||'').replace(/[\s\u00a0\u202f]/g,'').replace(',','.'),planned=/^-?\d+(?:\.\d+)?$/.test(planText)?Number(planText):null,historyDetails=factLoaded?(matched&&planned!==null?[money(amount),money(amount-planned),planned?money(100*(amount-planned)/Math.abs(planned))+'%':'—']:['—','—','—']):[...cells.slice(1,4)].map(v=>/^#/.test(String(v||''))?'—':v),notes=((bddsData&&bddsData.comments)||{})[m+'|'+key]||[],last=notes[notes.length-1],source=String(cells[4]||'').trim(),needsExplanation=matched&&planned!==null&&(Math.abs(planned)<0.005?Math.abs(amount)>=0.005:Math.abs((amount-planned)/planned)>0.2),comment=(source?'<span title="Комментарий из исходного файла">'+esc(source)+' </span>':'')+(boot.user.admin?'<button class="bdds-comment-button'+(needsExplanation?' bdds-comment-alert':'')+'" type="button" data-comment-key="'+esc(encodeURIComponent(key))+'" data-comment-month="'+m+'">'+(last?esc(last.text):'Добавить')+'</button>':'');return '<td class="num bdds-month-start">'+esc(cells[0]||'—')+'</td>'+(expanded.has(m)?historyDetails.map(v=>'<td class="num">'+esc(v||'—')+'</td>').join('')+'<td class="bdds-comment-cell">'+comment+'</td>':'');}).join('')+'</tr>';}).join('');
  if(typeof document!=='undefined')bddsCombineTables();
 }
 function bddsCombineTables(){
@@ -1072,6 +1073,7 @@ function bddsCombineTables(){
  body.innerHTML='';cr.forEach(r=>{const tr=r.cloneNode(false),old=historic.get(key(r));tr.appendChild(r.cells[0].cloneNode(true));if(old)[...old.cells].slice(1).forEach(c=>tr.appendChild(c.cloneNode(true)));else blank(tr,hcols);[...r.cells].slice(1).forEach(c=>tr.appendChild(c.cloneNode(true)));body.appendChild(tr)});
  const unmatched=hr.filter(r=>!historic.has(key(r)));if(unmatched.length){const band=document.createElement('tr'),td=document.createElement('td');td.className='catcol';td.textContent='Только в историческом БДДС';band.className='bdds-section';band.appendChild(td);blank(band,hcols+ccols);body.appendChild(band);unmatched.forEach(r=>{const tr=r.cloneNode(true);blank(tr,ccols);body.appendChild(tr)})}
  const months=[...head.querySelectorAll('[data-expand-month]')].map(x=>x.dataset.expandMonth);$('bddsFoldMonths').textContent=months.length&&months.every(m=>bddsExpandedMonths.has(m))?'Свернуть месяцы':'Развернуть месяцы';
+ if(bddsFocusTarget){const button=[...head.querySelectorAll('[data-expand-month]')].find(x=>x.dataset.expandMonth===bddsFocusTarget);if(button){const scroll=$('bddsCombinedView'),label=head.querySelector('.catcol'),box=button.getBoundingClientRect(),parent=scroll.getBoundingClientRect();scroll.scrollLeft+=box.left-parent.left-(label?label.getBoundingClientRect().width:0);bddsFocusTarget='';}}
 }
 function bddsDscr(items,month,field){const val=r=>Number((r[field]||{})[month])||0,operating=items.filter(r=>r.activity==='operating').reduce((sum,r)=>sum+(r.type==='income'?1:-1)*val(r),0),debt=items.filter(r=>r.type==='expense'&&['выплата тела кредита','проценты по кредиту'].includes(String(r.category||'').toLocaleLowerCase('ru').replace(/ё/g,'е').replace(/\s+/g,' ').trim())).reduce((sum,r)=>sum+val(r),0);return debt?operating/debt:null;}
 function bddsFundEnd(funds,month,net){const values=funds[month]||{};return values.end!=null?{value:values.end,automatic:false}:values.begin!=null?{value:values.begin+(Number(net[month])||0),automatic:true}:{value:null,automatic:false};}
@@ -1113,18 +1115,11 @@ function renderBddsView(){
    }
    (type==='income'?allInc:allOut).push(p);(type==='income'?factInc:factOut).push(f);
   }
-  const inc=section.filter(r=>r.type==='income'),out=section.filter(r=>r.type==='expense');
-  const subtract=(field)=>Object.fromEntries(dates.map(m=>[m,inc.reduce((v,r)=>v+(Number((r[field]||{})[m])||0),0)-out.reduce((v,r)=>v+(Number((r[field]||{})[m])||0),0)]));
-  result.push(renderRow('Сальдо по '+(activity==='operating'?'операционной':activity==='financing'?'финансовой':activity==='investment'?'инвестиционной':'неопределённой')+' деятельности',subtract('byMonth'),subtract('factByMonth'),'bdds-net',null));
  }
- const net=(a,b)=>Object.fromEntries(dates.map(m=>[m,a.reduce((v,r)=>v+(r[m]||0),0)-b.reduce((v,r)=>v+(r[m]||0),0)]));
- const netPlan=net(allInc,allOut);result.push(renderRow('ЧИСТЫЙ ДЕНЕЖНЫЙ ПОТОК',netPlan,net(factInc,factOut),'bdds-net',null));
- let dscrCells='';for(const m of dates){const p=bddsDscr(items,m,'byMonth'),f=factMonths.has(m)?bddsDscr(items,m,'factByMonth'):null,ratio=x=>x==null?'<span title="Нет суммы по статьям «Выплата тела кредита» и «Проценты по кредиту» за месяц">Нет выплат</span>':money(x);dscrCells+='<td class="num bdds-month-start">'+ratio(p)+'</td>'+(bddsExpandedMonths.has(m)?'<td class="num">'+(factMonths.has(m)?ratio(f):'—')+'</td><td class="num">'+(p==null||f==null?'—':ratio(f-p))+'</td><td class="num">'+(p==null||f==null||!p?'—':money(100*(f-p)/Math.abs(p))+'%')+'</td><td></td>':'');}
- result.push('<tr class="bdds-net"><td class="catcol" title="Сальдо операционной деятельности / (выплата тела кредита + проценты по кредиту). 1,2 — ориентир, которого требуют банки; меньше 1 — денег не хватает для обслуживания долга.">DSCR (месячный) ⓘ</td>'+dscrCells+'</tr>');
  $('bddsBody').innerHTML=result.join('');$('bddsFold').textContent=bddsCollapsed?'Развернуть статьи':'Свернуть статьи';
  $('bddsFoldMonths').textContent=dates.length&&dates.every(m=>bddsExpandedMonths.has(m))?'Свернуть месяцы':'Развернуть месяцы';
  bddsCombineTables();
- $('bddsStatus').textContent=(bddsYear==='2026'?'С ноября — бюджеты отделов · ':'')+bddsYear+' год · '+items.length+' статей · '+(hasFact?'факт получен из ФинТабло':'факт не загружен')+((bddsData.unmapped||[]).length?' · уточнить классификацию: '+bddsData.unmapped.length:'');
+ $('bddsStatus').textContent=(bddsYear==='2026'?'С ноября — бюджеты отделов · ':'')+bddsYear+' год · '+items.length+' статей · '+(factMonths.size?'факт сохранён: '+[...factMonths].sort().map(monthLabel).join(', '):'факт не загружен')+((bddsData.unmapped||[]).length?' · уточнить классификацию: '+bddsData.unmapped.length:'');
 }
 function bddsOpenComment(month,key){
  if(!bddsData)return;bddsCommentTarget={year:bddsYear,month,key};
@@ -1147,19 +1142,24 @@ function bddsSaveComment(){
   if(!bddsData.comments)bddsData.comments={};bddsData.comments[target.month+'|'+target.key]=res.messages;bddsCloseComment();renderBddsView();if(bddsHistoryMode)renderBddsHistory();
  }).catch(e=>{$('bddsCommentStatus').textContent='Ошибка: '+e.message;}).finally(()=>{$('bddsCommentSave').disabled=false;});
 }
+function bddsApplyFactSnapshot(res){
+ const year=res.year,month=res.month,previous=bddsFactData&&bddsFactData.year===year?bddsFactData:{year,articles:[],loadedMonths:[],departmentFacts:{}},merged=new Map();
+ previous.articles.forEach(r=>{const x={...r,byMonth:{...r.byMonth}};delete x.byMonth[month];merged.set(r.id,x);});
+ res.articles.forEach(r=>{const old=merged.get(r.id);if(old)old.byMonth={...old.byMonth,...r.byMonth};else merged.set(r.id,{...r,byMonth:{...r.byMonth}});});
+ const departmentFacts={...(previous.departmentFacts||{}),[month]:Object.fromEntries(res.articles.map(r=>[r.id,r]))},matchedDepartments={...(previous.matchedDepartments||{}),[month]:res.matchedDepartments||[]};
+ bddsFactData={year,articles:[...merged.values()],loadedMonths:[...new Set([...previous.loadedMonths,month])],departmentFacts,matchedDepartments};
+}
+function bddsRestoreSavedFacts(year){
+ if(!boot.user.admin||bddsSavedYears[year]==='loading'||bddsSavedYears[year]==='loaded'&&bddsFactData&&bddsFactData.year===year)return;bddsSavedYears[year]='loading';
+ call('wlBddsSavedFacts',year).then(reports=>{bddsSavedYears[year]='loaded';if(bddsYear!==year){delete bddsSavedYears[year];return;}if(bddsFactData&&bddsFactData.year!==year)bddsFactData=null;for(const report of reports)if(!(bddsFactData&&bddsFactData.loadedMonths.includes(report.month)))bddsApplyFactSnapshot(report);if(reports.length){const month=reports[reports.length-1].month;bddsExpandedMonths.add(month);bddsFocusTarget=month;$('bddsFactMonth').value=month;if(bddsData&&bddsData.year===year){renderBddsView();if(bddsHistoryMode)renderBddsHistory();}}}).catch(e=>{delete bddsSavedYears[year];$('bddsStatus').textContent='Не удалось открыть сохранённый факт: '+e.message;});
+}
 function bddsLoadFact(){
  const month=$('bddsFactMonth').value;if(!boot.user.admin||!/^\d{4}-(0[1-9]|1[0-2])$/.test(month)||!month.startsWith(bddsYear+'-')){alert('Выберите месяц выбранного года');return;}
  const now=new Date(),currentMonth=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');if(month>=currentMonth){alert('Месяц ещё не завершился. План-факт будет доступен после окончания месяца.');return;}
  const year=bddsYear;$('bddsFetchFact').disabled=true;$('bddsStatus').textContent='Чтение отчёта ФинТабло…';
  call('wlBddsFetchFact',year,month).then(res=>{
   if(year!==bddsYear)return;
-  const previous=bddsFactData&&bddsFactData.year===year?bddsFactData:{year,articles:[],loadedMonths:[],departmentFacts:{}},merged=new Map();
-  previous.articles.forEach(r=>{const x={...r,byMonth:{...r.byMonth}};delete x.byMonth[month];merged.set(r.id,x);});
-  res.articles.forEach(r=>{const old=merged.get(r.id);if(old)old.byMonth={...old.byMonth,...r.byMonth};else merged.set(r.id,r);});
-  const departmentFacts={...(previous.departmentFacts||{}),[month]:Object.fromEntries(res.articles.map(r=>[r.id,r]))};
-  const matchedDepartments={...(previous.matchedDepartments||{}),[month]:res.matchedDepartments||[]};
-  bddsFactData={year,articles:[...merged.values()],loadedMonths:[...new Set([...previous.loadedMonths,month])],departmentFacts,matchedDepartments};
-  bddsExpandedMonths.add(month);renderBddsView();if(bddsHistoryMode)renderBddsHistory();
+  bddsApplyFactSnapshot(res);bddsExpandedMonths.add(month);bddsFocusTarget=month;renderBddsView();if(bddsHistoryMode)renderBddsHistory();
   if((res.unmatchedDirections||[]).length)$('bddsStatus').textContent+=' · направления без однозначного отдела: '+res.unmatchedDirections.join(', ');
   if(month<'2026-11'&&year==='2026')$('bddsStatus').textContent+=' · исторический план по отделам недоступен';
  }).catch(e=>{$('bddsStatus').textContent='Не удалось получить факт: '+e.message;}).finally(()=>{$('bddsFetchFact').disabled=false;});

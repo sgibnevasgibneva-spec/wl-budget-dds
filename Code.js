@@ -228,8 +228,8 @@ function wlWriteExistingRowChanges_(ops,entries,stamp){
     i++;
   }
 }
-function wlOpsRead_(sh,key){
-  const v=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,3).getValues():[];
+function wlOpsRead_(sh,key,snapshot){
+  const v=snapshot|| (sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,3).getValues():[]);
   return v.map((r,i)=>{
     const month=wlMonthCellKey_(r[0])||String(r[0]||'');
     if(key&&month!==key)return null;
@@ -243,9 +243,9 @@ function wlOpsRead_(sh,key){
 }
 /** Уникализируем старые/дублированные ID только в рамках конкретного месяца.
  * Суммы, статьи, описания и данные других месяцев не меняются. */
-function wlRepairRowIds_(ops, key) {
-  const n=ops.getLastRow();if(n<2)return 0;
-  const vals=ops.getRange(2,1,n-1,3).getValues(),seen=new Set(),changes=[];
+function wlRepairRowIds_(ops, key, snapshot) {
+  const n=snapshot?snapshot.length+1:ops.getLastRow();if(n<2)return 0;
+  const vals=snapshot||ops.getRange(2,1,n-1,3).getValues(),seen=new Set(),changes=[];
   vals.forEach((v,i)=>{
     if(wlMonthCellKey_(v[0])!==key)return;
     let data;try{data=JSON.parse(v[2]);}catch(_){return;}
@@ -261,7 +261,7 @@ function wlRepairRowIds_(ops, key) {
     seen.add(id);
   });
   const stamp=new Date();
-  changes.forEach(x=>ops.getRange(x.line,2,1,2).setValues([[stamp,x.json]]));
+  changes.forEach(x=>{ops.getRange(x.line,2,1,2).setValues([[stamp,x.json]]);if(snapshot){snapshot[x.line-2][1]=stamp;snapshot[x.line-2][2]=x.json;}});
   if(changes.length)wlInvalidateOpsIndex_(key);
   return changes.length;
 }
@@ -277,7 +277,7 @@ function wlEnsureSkeleton_(ss,key){
   if(wlSkeletonIsCurrent_(props,key))return;
   return wlLock_(()=>{
     if(wlSkeletonIsCurrent_(props,key))return;
-    const periods=wlMonthList_(ss).filter(x=>x.key<=key),ops=wlOps_(ss);
+    const periods=wlMonthList_(ss).filter(x=>x.key<=key),ops=wlOps_(ss),last=ops.getLastRow(),snapshot=last>1?ops.getRange(2,1,last-1,3).getValues():[];
     const syncedMonths={};
     const trash=wlTrashSheet_(ss),tn=trash.getLastRow();
     const deleted=new Map();
@@ -292,8 +292,8 @@ function wlEnsureSkeleton_(ss,key){
     let previousKey='',previous=[];const cancelledRoots=new Set();
     for(const period of periods){
       for(const root of (deleted.get(period.key)||[]))cancelledRoots.add(root);
-      if(period.status==='Открыт')wlRepairRowIds_(ops,period.key);
-      const current=wlOpsRead_(ops,period.key);
+      if(period.status==='Открыт')wlRepairRowIds_(ops,period.key,snapshot);
+      const current=wlOpsRead_(ops,period.key,snapshot);
       // Закрытый месяц остаётся полностью неизменным, в том числе при автопереносе.
       if(period.status==='Открыт'&&previousKey&&previous.length){
         const existingRoots=new Set(current.map(e=>wlTemplateRoot_(e.row)));
@@ -320,7 +320,7 @@ function wlEnsureSkeleton_(ss,key){
                 if(value===before&&next!==before){ent.row[f]=next;changed=true;}
                 if(next!==before){base[f]=next;changed=true;}
               }
-              if(changed)ops.getRange(ent.line,2,1,2).setValues([[now,JSON.stringify(ent.row)]]);
+              if(changed){const json=JSON.stringify(ent.row);ops.getRange(ent.line,2,1,2).setValues([[now,json]]);snapshot[ent.line-2][1]=now;snapshot[ent.line-2][2]=json;}
             }
             return;
           }
@@ -334,7 +334,7 @@ function wlEnsureSkeleton_(ss,key){
             old.row.templateLegacyUnverified=true;
             old.row.templateFrom=previousKey;
             old.row.templateBaseline=Object.assign({},fields);
-            ops.getRange(old.line,2,1,2).setValues([[now,JSON.stringify(old.row)]]);
+            const json=JSON.stringify(old.row);ops.getRange(old.line,2,1,2).setValues([[now,json]]);snapshot[old.line-2][1]=now;snapshot[old.line-2][2]=json;
             existingRoots.add(root);
             return;
           }
@@ -349,6 +349,7 @@ function wlEnsureSkeleton_(ss,key){
           const first=ops.getLastRow()+1;
           ops.getRange(first,1,added.length,1).setNumberFormat('@');
           ops.getRange(first,1,added.length,3).setValues(added);
+          snapshot.push(...added);
           wlInvalidateOpsIndex_(period.key);
         }
         if(added.length||!period.clonedFrom){
@@ -356,7 +357,7 @@ function wlEnsureSkeleton_(ss,key){
         }
       }
       previousKey=period.key;
-      previous=wlOpsRead_(ops,period.key).map(e=>e.row);
+      previous=wlOpsRead_(ops,period.key,snapshot).map(e=>e.row);
       syncedMonths[wlSkeletonMark_(period.key)]=String(Date.now());
     }
     if(Object.keys(syncedMonths).length)props.setProperties(syncedMonths,false);
@@ -378,10 +379,11 @@ function wlInitializeV4_(){
   });
 }
 function wlBoot_(){
-  const start=Date.now(),ss=wlStore_(),user=wlUser_(ss);wlEnsureDefaultMonths_(ss);
+  const start=Date.now(),ss=wlStore_(),user=wlUser_(ss);let periods=wlMonthList_(ss);
+  if(!periods.length){wlEnsureDefaultMonths_(ss);periods=wlMonthList_(ss);}
   const dict=wlDictionaries_(ss);dict.departments=dict.departments.filter(x=>user.view.includes(x.name));
   // Incoming articles may be read for summaries; only administrators can edit or select them.
-  const active=wlMonthList_(ss).filter(m=>m.active&&wlCanSeeBudgetYear_(user,m.key));
+  const active=periods.filter(m=>m.active&&wlCanSeeBudgetYear_(user,m.key));
   if(!active.length)throw Error('В таблице «Периоды» нет открытых для выбора месяцев. Проверьте столбец «Показывать».');
   console.log('WL_PERF boot '+(Date.now()-start)+'ms');
   const nowKey=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyy-MM');

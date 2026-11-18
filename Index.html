@@ -263,7 +263,7 @@ header{flex:0 0 auto;position:relative;top:auto}
 <ol>
 <li>Выберите нужный месяц и отдел.</li>
 <li>Нажмите «+ Добавить строку» или откройте уже заполненную строку.</li>
-<li>Выберите «Как платим?» и «Откуда платим?», затем укажите название или описание расхода. Статью ДДС назначит руководитель.</li>
+<li>Выберите «Как платим?» и «Откуда платим?», затем укажите название или описание расхода. Статью ДДС назначит администратор.</li>
 <li>Внесите сумму в день планируемой оплаты. Можно использовать формулы, например <b>=1500*3</b> или <b>=1000+250</b>. Все суммы указываются в рублях.</li>
 <li>Чтобы добавить комментарий к сумме, нажмите правой кнопкой мыши на ячейку с суммой.</li>
 <li>Чтобы удалить строку, отметьте её галочкой и нажмите «Удалить выбранные». Можно выбрать сразу несколько строк.</li>
@@ -316,7 +316,7 @@ function authClear(){try{localStorage.removeItem('wl_auth_token');}catch(_){}try
 function call(name,...args){return new Promise((resolve,reject)=>{if(!window.google||!google.script||!google.script.run){reject(new Error('Для работы с сервером откройте опубликованное приложение Apps Script'));return;}google.script.run.withSuccessHandler(resolve).withFailureHandler(e=>{if(/Сеанс истёк|Войдите в приложение/.test(String(e&&e.message||e))){authClear();$('loginCover').classList.remove('hidden');$('loginStatus').textContent='Сеанс закончился. Войдите снова.';}reject(e);}).wlRpc(authGet(),name,args);});}
 let selectedRowIds=new Set(), selectedTrashEntries=new Set(), importPrepared=null, importFileName='', summaryText='', summaryDepartment='';
 let ftBudgetState=null;
-let cfoCollapsed=false,cfoDepartmentsCollapsed=false,bddsCollapsed=false,bddsData=null,bddsYear='',bddsFactData=null,bddsExpandedMonths=new Set(),bddsCommentTarget=null,bddsHistoryMode=false,bddsHistoryData=null,cfoFundsByYear={},bddsSavedYears={},bddsFocusTarget='';
+let cfoCollapsed=false,cfoDepartmentsCollapsed=false,bddsCollapsed=false,bddsData=null,bddsPlanLoadedAt=0,bddsYear='',bddsFactData=null,bddsExpandedMonths=new Set(),bddsCommentTarget=null,bddsHistoryMode=false,bddsHistoryData=null,cfoFundsByYear={},bddsSavedYears={},bddsFocusTarget='';
 /* Единый шаблон генерируется тем же кодом, что выгрузка отдела. */
 let noteTarget=null;
 let boot=null,months=[],monthKey='2026-11',rows=[],dict={departments:[],payments:[],sources:[],categories:[]},dept='',activeTab='Отделы',summaryMode='monthly',deptMode='expenses';
@@ -352,7 +352,7 @@ function tabs(){const nav=$('tabs');nav.innerHTML='';
  b.textContent=({ЦФО:'БДДС ЦФО',БДДС:'План-факт'}[t]||t)+(t==='Настройки'&&reviewCount?' · ⚠ '+reviewCount:'');b.className=t===activeTab?'active':'';
  b.onclick=()=>{activeTab=t;tabs();views();};nav.appendChild(b);});}
 function refreshReviewCount(){if(!boot||!boot.user.admin)return;call('wlReviewList').then(items=>{reviewCount=items.length;tabs();}).catch(e=>{console.warn('Не удалось загрузить уведомления',e);});}
-function views(){VIEWS.forEach((id,i)=>$(id).classList.toggle('hidden',activeTab!==TABS[i]));if(activeTab==='ЦФО')renderSummary();if(activeTab==='БДДС')renderBdds(true);if(activeTab==='Справочники')renderDictionaries();if(activeTab==='ФинТабло'&&!$('ftBudgetMonth').value)$('ftBudgetMonth').value=monthKey;if(activeTab==='Настройки'){loadSettings();showYearArchives();}}
+function views(){VIEWS.forEach((id,i)=>$(id).classList.toggle('hidden',activeTab!==TABS[i]));if(activeTab==='ЦФО')renderSummary();if(activeTab==='БДДС')renderBdds(false);if(activeTab==='Справочники')renderDictionaries();if(activeTab==='ФинТабло'&&!$('ftBudgetMonth').value)$('ftBudgetMonth').value=monthKey;if(activeTab==='Настройки'){loadSettings();showYearArchives();}}
 function departmentOptions(){const s=$('departmentSelect');s.innerHTML=boot.user.view.map(d=>'<option value="'+esc(d)+'">'+esc(d)+'</option>').join('');if(!boot.user.view.includes(dept))dept=boot.user.view[0]||'';s.value=dept;$('addRow').disabled=!canEdit();refreshBulkUi();}
 function rowSum(r){return Object.values(r.amounts||{}).reduce((s,n)=>s+(Number(n)||0),0);}
 function tableHead(){let h='<tr><th class="fixed c0"><input id="selectAllRows" type="checkbox" aria-label="Выбрать все строки отдела"></th><th class="fixed c1">Как платим?</th><th class="fixed c2">Откуда платим?</th><th class="fixed c3">Статья ДДС</th><th class="fixed c4">Описание/название затрат</th>';
@@ -1001,7 +1001,7 @@ function cfoEditGroup(item){
  container.onchange=()=>{const choice=container.value?JSON.parse(container.value):{activity:'',group:''};container.disabled=true;call('wlSetArticleGroup',item.type,item.name,choice.activity,choice.group).then(result=>{boot.grouping=result;bddsData=null;bddsFactData=null;renderDictionaries();}).catch(e=>{showError(e);renderDictionaries();});};return container;
 }
 function renderSummary(){
- if(!boot)return;
+ if(!boot||activeTab!=='ЦФО')return;
  cfoLoadFunds();
  const deps=summaryDepartment?[summaryDepartment]:boot.user.view;
  const filtered=rows.filter(r=>deps.includes(r.department));
@@ -1050,9 +1050,9 @@ function renderBdds(force){
  bddsHistoryMode=bddsYear==='2026'&&boot.user.admin;bddsHistoryControls();
  if(bddsHistoryMode){const requested=bddsYear;if(bddsHistoryData&&!force)renderBddsHistory();else call('wlBddsHistorical2026').then(data=>{bddsHistoryData=data;if(bddsHistoryMode&&bddsYear===requested){if(bddsData&&bddsData.year===requested)renderBddsView();renderBddsHistory();}}).catch(e=>{$('bddsHistoryBody').innerHTML='<tr><td>Не удалось загрузить исторический БДДС: '+esc(e.message||e)+'</td></tr>';});}
  bddsRestoreSavedFacts(bddsYear);
- if(bddsData&&bddsData.year===bddsYear&&!force){renderBddsView();return;}
+ if(bddsData&&bddsData.year===bddsYear&&!force){renderBddsView();if(Date.now()-bddsPlanLoadedAt<15000)return;}
  const year=bddsYear;$('bddsStatus').textContent='Загружаем '+year+' год…';
- call('wlGetBddsPlan',year).then(res=>{if(bddsYear!==year)return;bddsData=res;renderBddsView();if(bddsHistoryMode)renderBddsHistory();}).catch(e=>{$('bddsStatus').textContent='Ошибка: '+(e.message||e);});
+ call('wlGetBddsPlan',year).then(res=>{if(bddsYear!==year)return;bddsData=res;bddsPlanLoadedAt=Date.now();renderBddsView();if(bddsHistoryMode)renderBddsHistory();}).catch(e=>{$('bddsStatus').textContent='Ошибка: '+(e.message||e);});
 }
 function bddsHistoryControls(){$('bddsFold').classList.remove('hidden');$('bddsFetchFact').classList.toggle('hidden',!boot.user.admin);$('bddsFactMonth').classList.toggle('hidden',!boot.user.admin);if(!$('bddsFactMonth').value.startsWith(bddsYear+'-'))$('bddsFactMonth').value=monthKey.startsWith(bddsYear)?monthKey:bddsYear+'-01';}
 function renderBddsHistory(){

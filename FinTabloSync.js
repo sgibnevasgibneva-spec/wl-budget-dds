@@ -8,7 +8,7 @@ const WL_FT_TOKEN_PROP_='WL_DDS_FINTABLO_API_TOKEN';
 const WL_FT_CLOSED_YEARS_PROP_='WL_DDS_CLOSED_YEARS';
 const WL_FT_ENDPOINT_='https://api.fintablo.ru/v1/category';
 
-function wlFinTabloSetToken(token){
+function wlFinTabloSetToken_(token){
   const ss=wlStore_();wlAdmin_(ss);
   const value=String(token||'').trim();
   if(!/^[A-Za-z0-9_.-]{12,240}$/.test(value))throw Error('Некорректный формат API-ключа');
@@ -104,7 +104,7 @@ function wlFinTabloDigest_(data){
   return Utilities.base64EncodeWebSafe(bytes).replace(/=+$/,'');
 }
 /** Read-only comparison. Do not infer ownership of pre-existing plans. */
-function wlFinTabloBudgetPreview(month){
+function wlFinTabloBudgetPreview_(month){
  month=wlKey_(month);const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'ФинТабло',false);if(month.startsWith('2026-')&&month<'2026-11')throw Error('Для исторических месяцев требуется сверка с исходным БДДС. Она пока не подключена.');wlFindMonth_(ss,month,false);
  const token=PropertiesService.getScriptProperties().getProperty(WL_FT_TOKEN_PROP_);if(!token)throw Error('Сначала сохраните ключ ФинТабло');
  const cat=wlFinTabloNormalize_(wlFinTabloFetch_()),local=new Map(),warnings=cat.warnings.slice(),dict=wlDictionaries_(ss),income=new Set(dict.incomeCategories.map(wlBddsNormalize_)),expense=new Set(dict.categories.map(wlBddsNormalize_));
@@ -128,11 +128,11 @@ function wlFinTabloBudgetPreview(month){
  const rows=result.sort((a,b)=>a.name.localeCompare(b.name,'ru')),hash=wlFinTabloDigest_({month,rows,warnings,remote});return {month,rows,warnings,remoteCount:remote.length,hash};
 }
 /** Create only missing plan items after a fresh, explicitly approved preview. */
-function wlFinTabloBudgetSend(month,expectedHash){
+function wlFinTabloBudgetSend_(month,expectedHash){
  month=wlKey_(month);if(!expectedHash)throw Error('Сначала выполните сверку');
  return wlLock_(()=>{
   const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'ФинТабло',false);
-  const preview=wlFinTabloBudgetPreview(month);if(preview.hash!==expectedHash)throw Error('План или данные ФинТабло изменились. Повторите сверку');
+  const preview=wlFinTabloBudgetPreview_(month);if(preview.hash!==expectedHash)throw Error('План или данные ФинТабло изменились. Повторите сверку');
   if(preview.warnings.length||preview.rows.some(r=>r.action==='blocked'||!r.action))throw Error('Есть статьи, требующие проверки. Отправка отменена');
   const props=PropertiesService.getScriptProperties(),token=props.getProperty(WL_FT_TOKEN_PROP_),date=month.slice(5)+'.'+month.slice(0,4),created=[],skipped=preview.rows.filter(r=>r.action==='skip').length;
   for(const item of preview.rows.filter(r=>r.action==='create')){
@@ -154,7 +154,7 @@ function wlFinTabloBudgetSend(month,expectedHash){
  });
 }
 function wlFinTabloLocal_(ss){const d=wlDictionaries_(ss);return {expenses:d.categories.slice().sort(),incomes:d.incomeCategories.slice().sort()};}
-function wlFinTabloPreview(){
+function wlFinTabloPreview_(){
   const ss=wlStore_();wlAdmin_(ss);
   const fresh=wlFinTabloNormalize_(wlFinTabloFetch_());
   const local=wlFinTabloLocal_(ss),current=new Set([...local.expenses,...local.incomes]);
@@ -174,7 +174,7 @@ function wlFinTabloPreview(){
     outcomeCount:fresh.expenses.length,incomeCount:fresh.incomes.length,
     archivedCount:fresh.archivedCount,parentCount:fresh.parentCount,warnings:fresh.warnings};
 }
-function wlFinTabloApply(remoteHash,localHash){
+function wlFinTabloApply_(remoteHash,localHash){
   // Fetch outside lock so ten employees are never waiting for a network request.
   const ss=wlStore_(),user=wlAdmin_(ss);
   const fresh=wlFinTabloNormalize_(wlFinTabloFetch_());
@@ -205,7 +205,7 @@ function wlYearClosed_(year){
   const closed=JSON.parse(PropertiesService.getScriptProperties().getProperty(WL_FT_CLOSED_YEARS_PROP_)||'[]');
   return closed.includes(String(year));
 }
-function wlYearManage(action,year){
+function wlYearManage_(action,year){
   year=String(year||'');if(!/^(20|21)\d{2}$/.test(year))throw Error('Неверный год');
   if(action!=='close'&&action!=='open')throw Error('Недопустимое действие с годом');
   return wlLock_(()=>{
@@ -235,7 +235,7 @@ function wlYearManage(action,year){
 }
 
 /** Selective, explicitly approved import into OUR dictionary; never writes to FinTablo. */
-function wlFinTabloApplySelected(remoteHash,localHash,selectedKeys){
+function wlFinTabloApplySelected_(remoteHash,localHash,selectedKeys){
   if(!Array.isArray(selectedKeys)||!selectedKeys.length||selectedKeys.length>500)throw Error('Выберите статьи для применения');
   const ss=wlStore_(),admin=wlAdmin_(ss);
   // No outbound mutation: GET the source of truth, then apply approved local diffs only.

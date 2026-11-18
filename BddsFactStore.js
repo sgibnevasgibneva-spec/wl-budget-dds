@@ -9,6 +9,6 @@ function wlBddsReadFactSnapshots_(rows,year,zone){
  const latest=new Map();for(const v of versions.values()){if(v.parts.length!==v.count||Array.from({length:v.count},(_,i)=>v.parts[i]).some(x=>!x))continue;let report;try{report=JSON.parse(v.parts.join(''));}catch(_){continue;}if(report.month!==v.month||report.year!==year||!Array.isArray(report.articles))continue;latest.set(v.month,report);}
  return [...latest.values()].sort((a,b)=>a.month.localeCompare(b.month));
 }
-function wlBddsSavedFacts(year){
+function wlBddsSavedFacts_(year){
  year=String(year||'');if(!/^\d{4}$/.test(year))throw Error('Неверный год');const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'БДДС',false);const sh=ss.getSheetByName('WL_ПланФакт_Снимки');if(!sh||sh.getLastRow()<2)return [];return wlBddsReadFactSnapshots_(sh.getRange(2,1,sh.getLastRow()-1,6).getValues(),year,ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone());
 }

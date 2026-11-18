@@ -113,7 +113,7 @@ function wlEnsureDefaultMonths_(ss){
     sh.getRange(first,1,vals.length,6).setValues(vals);
   }
 }
-function wlCurrentEmail_(){return String(Session.getActiveUser().getEmail()||'').trim().toLowerCase();}
+function wlCurrentEmail_(){return WL_AUTH_EMAIL||String(Session.getActiveUser().getEmail()||'').trim().toLowerCase();}
 function wlRules_(ss){
   const sh=wlAccessSheet_(ss);if(sh.getLastRow()<2)return [];
   return sh.getRange(2,1,sh.getLastRow()-1,8).getDisplayValues().map((r,i)=>{
@@ -363,7 +363,7 @@ function wlEnsureSkeleton_(ss,key){
   });
 }
 /** Выполняется владельцем ОДИН РАЗ из редактора Apps Script. */
-function wlInitializeV4(){
+function wlInitializeV4_(){
   return wlLock_(()=>{
     const ss=wlStore_();wlOps_(ss);wlDictSheet_(ss);wlEnsureDefaultMonths_(ss);
     const sh=wlAccessSheet_(ss),rules=wlRules_(ss);
@@ -377,7 +377,7 @@ function wlInitializeV4(){
     return {ok:true,spreadsheetUrl:ss.getUrl(),admin:wlCurrentEmail_()};
   });
 }
-function wlBoot(){
+function wlBoot_(){
   const start=Date.now(),ss=wlStore_(),user=wlUser_(ss);wlEnsureDefaultMonths_(ss);
   const dict=wlDictionaries_(ss);dict.departments=dict.departments.filter(x=>user.view.includes(x.name));
   // Incoming articles may be read for summaries; only administrators can edit or select them.
@@ -394,7 +394,7 @@ function wlRowOrder_(ss,key,department,rows){
  const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone(),records=sh.getRange(2,1,sh.getLastRow()-1,3).getValues(),found=records.find(r=>wlMonthCellKey_(r[0],zone)===key&&String(r[1])===department);let ids=[];if(found)try{ids=JSON.parse(String(found[2]));}catch(_){}if(!Array.isArray(ids))return rows;
  const rank=new Map(ids.map((id,i)=>[String(id),i]));return rows.map((row,i)=>({row,i})).sort((a,b)=>(rank.has(a.row.id)?rank.get(a.row.id):ids.length+a.i)-(rank.has(b.row.id)?rank.get(b.row.id):ids.length+b.i)).map(x=>x.row);
 }
-function wlMoveBudgetRow(key,department,id,direction){
+function wlMoveBudgetRow_(key,department,id,direction){
  key=wlKey_(key);department=wlNormalizeDept_(department);id=String(id||'');if(!['up','down','top','bottom'].includes(direction))throw Error('Недопустимое направление');
  return wlLock_(()=>{const ss=wlStore_(),user=wlUser_(ss),month=wlFindMonth_(ss,key);wlRequireBudgetYear_(user,key);wlRequireTab_(user,'Отделы',true);if(month.status!=='Открыт'||!user.edit.includes(department))throw Error('Нет права изменять строки этого отдела или месяц закрыт');
   const rows=wlRowOrder_(ss,key,department,wlOpsRead_(wlOps_(ss),key).map(x=>x.row).filter(r=>r.department===department)),index=rows.findIndex(r=>r.id===id);if(index<0)throw Error('Строка не найдена. Обновите страницу');
@@ -403,7 +403,7 @@ function wlMoveBudgetRow(key,department,id,direction){
   sh.getRange(line,1,1,5).setValues([[key,department,JSON.stringify(rows.map(r=>r.id)),new Date(),user.email]]);return rows.map(r=>r.id);
  });
 }
-function wlGetMonth(key){
+function wlGetMonth_(key){
   const start=Date.now();
   key=wlKey_(key);const ss=wlStore_(),user=wlUser_(ss);wlRequireBudgetYear_(user,key);let month=wlFindMonth_(ss,key);
   if(!wlCanSeeTab_(user,'Отделы')&&!wlCanSeeTab_(user,'ЦФО'))throw Error('Нет доступа к детальным данным бюджета');
@@ -413,7 +413,7 @@ function wlGetMonth(key){
   console.log('WL_PERF getMonth '+key+' '+(Date.now()-start)+'ms');
   return {key,month:{key:month.key,status:month.status},rows};
 }
-function wlPatchChanges(key,updates){
+function wlPatchChanges_(key,updates){
   const start=Date.now();key=wlKey_(key);
   if(!Array.isArray(updates)||!updates.length||updates.length>150)throw Error('Неверный набор изменений');
   return wlSaveLock_(()=>{
@@ -546,7 +546,7 @@ function wlCascadeDeletedTemplates_(ss,key,removed,u){
  for(const period of new Set([...drop,...edited].map(item=>item.key))){wlInvalidateOpsIndex_(period);wlInvalidateFollowingMonths_(ss,period,false);}
  return {propagated:drop.length,keptEdited:edited.length,keptClosed};
 }
-function wlDeleteRow(key,id){
+function wlDeleteRow_(key,id){
   return wlLock_(()=>{
     key=wlKey_(key);id=String(id||'').trim();if(!id)throw Error('Не указан идентификатор строки');
     const ss=wlStore_(),u=wlUser_(ss),month=wlFindMonth_(ss,key);
@@ -565,7 +565,7 @@ function wlDeleteRow(key,id){
   });
 }
 /** Администратор видит удалённые строки и может восстановить любую из них в открытом месяце. */
-function wlTrashList(){
+function wlTrashList_(){
   const ss=wlStore_();wlAdmin_(ss);
   const sh=wlTrashSheet_(ss),n=sh.getLastRow();if(n<2)return [];
   return sh.getRange(2,1,n-1,7).getValues().map((r,i)=>{
@@ -574,7 +574,7 @@ function wlTrashList(){
     return {entry:i+2,month:wlMonthCellKey_(r[0])||String(r[0]),deletedAt:r[1] instanceof Date?r[1].toISOString():String(r[1]),deletedBy:String(r[2]||''),department:String(row.department||''),category:String(row.category||''),description:String(row.description||''),amount:Math.round(Object.values(row.amounts||{}).reduce((sum,n)=>sum+(Number(n)||0),0)*100)/100,restored:String(r[4])==='Восстановлена'};
   }).filter(Boolean).reverse().slice(0,300);
 }
-function wlTrashRestore(entryNumber){
+function wlTrashRestore_(entryNumber){
   return wlLock_(()=>{
     const ss=wlStore_(),admin=wlAdmin_(ss),sh=wlTrashSheet_(ss);
     const n=Number(entryNumber);
@@ -593,7 +593,7 @@ function wlTrashRestore(entryNumber){
     return {ok:true,month:key};
   });
 }
-function wlMonthManage(action,key){
+function wlMonthManage_(action,key){
   return wlLock_(()=>{
     key=wlKey_(key);const ss=wlStore_();wlAdmin_(ss);const sh=wlMonthSheet_(ss),list=wlMonthList_(ss),p=list.find(x=>x.key===key);
     if(action==='add'){
@@ -611,7 +611,7 @@ function wlMonthManage(action,key){
     return wlMonthList_(ss).filter(v=>v.active).map(v=>({key:v.key,status:v.status}));
   });
 }
-function wlDictionaryAdd(kind,value){
+function wlDictionaryAdd_(kind,value){
   return wlLock_(()=>{
     const ss=wlStore_();wlAdmin_(ss);const i=WL_KEYS.indexOf(kind);if(i<0)throw Error('Неизвестный справочник');
     value=String(value||'').trim();if(!value||value.length>300)throw Error('Недопустимое значение');
@@ -624,7 +624,7 @@ function wlDictionaryAdd(kind,value){
 }
 
 /** Rename payment sources or methods in all stored budgets and restorable rows. */
-function wlDictionaryRename(kind,oldValue,newValue){
+function wlDictionaryRename_(kind,oldValue,newValue){
  return wlLock_(()=>{
   const ss=wlStore_(),user=wlAdmin_(ss),fields={sources:'source',payments:'payment'},field=fields[kind];
   if(!field)throw Error('Переименование этого справочника пока не поддерживается');
@@ -647,7 +647,7 @@ function wlDictionaryRename(kind,oldValue,newValue){
   periods.forEach(month=>{wlInvalidateOpsIndex_(month);wlInvalidateFollowingMonths_(ss,month,false);});wlInvalidateDictionaries_();return wlDictionaries_(ss);
  });
 }
-function wlDictionaryRemove(kind,value){
+function wlDictionaryRemove_(kind,value){
   return wlLock_(()=>{
     const ss=wlStore_();wlAdmin_(ss);const i=WL_KEYS.indexOf(kind);if(i<0)throw Error('Неизвестный справочник');
     const sh=wlDictSheet_(ss),v=sh.getLastRow()>1?sh.getRange(2,i+1,sh.getLastRow()-1,1).getDisplayValues():[];
@@ -657,8 +657,8 @@ function wlDictionaryRemove(kind,value){
     sh.getRange(pos+2,i+1).clearContent();wlInvalidateDictionaries_();return wlDictionaries_(ss);
   });
 }
-function wlGetSettings(){const ss=wlStore_();wlAdmin_(ss);return {rules:wlRules_(ss).map(r=>({email:r.email,name:r.name||'',role:r.role,view:r.view,edit:r.edit,tabs:r.role==='admin'?WL_TAB_NAMES:r.tabs,tabEdit:r.role==='admin'?WL_TAB_NAMES:r.tabEdit,enabled:r.enabled})),departments:wlDictionaries_(ss).departments.map(d=>d.name),tabs:WL_TAB_NAMES,spreadsheetUrl:ss.getUrl()};}
-function wlSaveAccess(item){
+function wlGetSettings_(){const ss=wlStore_();wlAdmin_(ss);return {rules:wlRules_(ss).map(r=>({email:r.email,name:r.name||'',role:r.role,view:r.view,edit:r.edit,tabs:r.role==='admin'?WL_TAB_NAMES:r.tabs,tabEdit:r.role==='admin'?WL_TAB_NAMES:r.tabEdit,enabled:r.enabled})),departments:wlDictionaries_(ss).departments.map(d=>d.name),tabs:WL_TAB_NAMES,spreadsheetUrl:ss.getUrl()};}
+function wlSaveAccess_(item){
   return wlLock_(()=>{
     const ss=wlStore_();wlAdmin_(ss);
     const email=String(item.email||'').trim().toLowerCase();if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))throw Error('Неверный email');
@@ -676,21 +676,21 @@ function wlSaveAccess(item){
     if(email===owner&&!enabled)throw Error('Нельзя отключить учётную запись владельца');
     const sh=wlAccessSheet_(ss),rule=wlRules_(ss).find(r=>r.email===email);
     const row=[email,role,view.join('|'),edit.join('|'),enabled,tabs.join('|'),tabEdit.join('|'),name||((rule&&rule.name)||'')];
-    if(rule)sh.getRange(rule.row,1,1,8).setValues([row]);else sh.appendRow(row);
-    return wlGetSettings();
+    wlAuthRevoke_(email);if(rule)sh.getRange(rule.row,1,1,8).setValues([row]);else sh.appendRow(row);
+    return wlGetSettings_();
   });
 }
-function wlRemoveAccess(email){
+function wlRemoveAccess_(email){
   return wlLock_(()=>{
     const ss=wlStore_();wlAdmin_(ss);email=String(email||'').toLowerCase();
     if(email===PropertiesService.getScriptProperties().getProperty(WL_PREFIX+'OWNER_EMAIL'))throw Error('Владельца удалять нельзя');
-    const rule=wlRules_(ss).find(r=>r.email===email);if(!rule)throw Error('Не найден');wlAccessSheet_(ss).deleteRow(rule.row);return wlGetSettings();
+    const rule=wlRules_(ss).find(r=>r.email===email);if(!rule)throw Error('Не найден');wlAuthEraseCode_(email);wlAccessSheet_(ss).deleteRow(rule.row);return wlGetSettings_();
   });
 }
 /** Импорт повторяемый: существующие строки по ID не трогаются. Ручные строки тоже сохраняются. */
 
 /** Проверки изменённых описаний: уведомления сохраняются между сеансами. */
-function wlReviewList(){
+function wlReviewList_(){
   const ss=wlStore_();wlAdmin_(ss);
   const closed=new Set(wlMonthList_(ss).filter(m=>m.status==='Закрыт').map(m=>m.key));
   return wlOpsRead_(wlOps_(ss)).filter(e=>e.row.reviewPending).map(e=>({
@@ -701,7 +701,7 @@ function wlReviewList(){
     monthClosed:closed.has(e.key),cashFlowType:String(e.row.cashFlowType||'')
   })).sort((a,b)=>b.at.localeCompare(a.at)).slice(0,500);
 }
-function wlReviewResolve(key,id,category,categoryType){
+function wlReviewResolve_(key,id,category,categoryType){
   return wlLock_(()=>{
     key=wlKey_(key);id=String(id||'').trim();category=String(category||'').trim();
     const ss=wlStore_(),admin=wlAdmin_(ss),month=wlFindMonth_(ss,key,true);
@@ -721,7 +721,7 @@ function wlReviewResolve(key,id,category,categoryType){
 }
 
 /** Проверка месяцев после исправления — безопасно, без изменения операций. */
-function wlCheckMonthsV41(){
+function wlCheckMonthsV41_(){
   const ss=wlStore_();
   wlEnsureDefaultMonths_(ss);
   const months=wlMonthList_(ss);
@@ -730,7 +730,7 @@ function wlCheckMonthsV41(){
 
 
 /** Массовое удаление только выбранных уникальных строк, с записью в корзину. */
-function wlDeleteRows(key, ids) {
+function wlDeleteRows_(key, ids) {
   key=wlKey_(key);
   if(!Array.isArray(ids)||!ids.length||ids.length>400)throw Error('Отметьте от 1 до 400 строк');
   const wanted=new Set(ids.map(x=>String(x||'').trim()).filter(Boolean));
@@ -764,7 +764,7 @@ function wlDeleteRows(key, ids) {
 }
 
 /** v4.3: восстановление нескольких строк из корзины, с проверкой открытых месяцев. */
-function wlTrashRestoreMany(entries){
+function wlTrashRestoreMany_(entries){
   if(!Array.isArray(entries)||!entries.length||entries.length>300)throw Error('Выберите до 300 строк');
   return wlLock_(()=>{
     const ss=wlStore_(),u=wlAdmin_(ss),trash=wlTrashSheet_(ss),ops=wlOps_(ss);
@@ -792,7 +792,7 @@ function wlTrashRestoreMany(entries){
 }
 
 /** v4.3: очистка корзины. Данные безвозвратно удаляются из корзины; минимальный журнал сохраняется. */
-function wlTrashPurge(entries){
+function wlTrashPurge_(entries){
   if(!Array.isArray(entries)||!entries.length||entries.length>300)throw Error('Выберите до 300 строк');
   return wlLock_(()=>{
     const ss=wlStore_(),u=wlAdmin_(ss),trash=wlTrashSheet_(ss),n=trash.getLastRow();
@@ -814,7 +814,7 @@ function wlTrashPurge(entries){
 }
 
 /** v4.3: импорт строк XLSX, разобранных в браузере. Не перезаписывает существующие строки. */
-function wlImportExcelBatch(key, payload){
+function wlImportExcelBatch_(key, payload){
   key=wlKey_(key);
   if(!Array.isArray(payload)||!payload.length||payload.length>80)throw Error('Допустимо от 1 до 80 строк в пакете');
   return wlLock_(()=>{
@@ -868,7 +868,7 @@ function wlImportExcelBatch(key, payload){
 
 /** Monthly audit maintenance: archive historic purge events instead of erasing evidence.
  * Installed only after an administrator explicitly enables the schedule. */
-function wlMonthlyAuditMaintenance(){
+function wlMonthlyAuditMaintenance_(){
   return wlLock_(()=>{
     const ss=wlStore_();
     const log=ss.getSheetByName('Журнал очистки корзины');
@@ -889,22 +889,22 @@ function wlMonthlyAuditMaintenance(){
   });
 }
 /** Run once as admin. Trigger will archive 35+ day entries at the start of each month. */
-function wlEnableMonthlyAuditArchive(){
+function wlEnableMonthlyAuditArchive_(){
   const ss=wlStore_();wlAdmin_(ss);
-  const handler='wlMonthlyAuditMaintenance';
+  const handler='wlMonthlyAuditMaintenance_';
   try{
     const old=ScriptApp.getProjectTriggers().filter(t=>t.getHandlerFunction()===handler);
     if(!old.length)ScriptApp.newTrigger(handler).timeBased().onMonthDay(1).atHour(3).create();
     return {enabled:true,triggerCount:old.length||1};
   }catch(e){
-    if(wlYearArchiveMissingTriggerScope_(e))throw Error('Для автоматической очистки журнала требуется разрешение Google. Выполните в редакторе Apps Script wlAuthorizeYearArchive, подтвердите доступ, затем включите очистку ещё раз.');
+    if(wlYearArchiveMissingTriggerScope_(e))throw Error('Для автоматической очистки журнала требуется разрешение Google. Выполните в редакторе Apps Script wlAuthorizeYearArchive_, подтвердите доступ, затем включите очистку ещё раз.');
     throw e;
   }
 }
 
 
 /** Admin-only preview for moving royalty receipts out of expense categories. */
-function wlRoyaltyIncomePreview(){
+function wlRoyaltyIncomePreview_(){
  const ss=wlStore_();wlAdmin_(ss);
  const labels=['Получение роялти','Поступление роялти'];
  const dict=wlDictionaries_(ss),target=dict.incomeCategories.find(v=>labels.includes(v))||'Получение роялти';
@@ -912,7 +912,7 @@ function wlRoyaltyIncomePreview(){
  return {count:entries.length,total:Math.round(entries.reduce((sum,e)=>sum+Object.values(e.row.amounts||{}).reduce((v,n)=>v+(Number(n)||0),0),0)*100)/100};
 }
 /** One-time, reversible-by-audit reclassification; does not delete the budget rows. */
-function wlMigrateRoyaltyIncome(){
+function wlMigrateRoyaltyIncome_(){
  return wlLock_(()=>{
   const ss=wlStore_(),u=wlAdmin_(ss),dict=wlDictionaries_(ss),labels=['Получение роялти','Поступление роялти'];
   const target=dict.incomeCategories.find(v=>labels.includes(v))||'Получение роялти';
@@ -1049,8 +1049,8 @@ function wlExcelRoundTripCore_(key,payload,dryRun){
   };
   return dryRun?action():wlLock_(action);
 }
-function wlPreviewExcelRoundTrip(key,payload){return wlExcelRoundTripCore_(key,payload,true);}
-function wlApplyExcelRoundTrip(key,payload){return wlExcelRoundTripCore_(key,payload,false);}
+function wlPreviewExcelRoundTrip_(key,payload){return wlExcelRoundTripCore_(key,payload,true);}
+function wlApplyExcelRoundTrip_(key,payload){return wlExcelRoundTripCore_(key,payload,false);}
 
 
 /** ЦФО/БДДС: агрегирование по всем доступным отделам без записи в Sheets. */
@@ -1077,7 +1077,7 @@ function wlBddsGrouping_(ss){
 function wlBddsMeta_(type,category,grouping){
  const key=type+'|'+wlBddsNormalize_(category);return (grouping&&grouping.overrides[key])||(grouping&&grouping.defaults[key])||{activity:'unclassified',group:'Требуют распределения'};
 }
-function wlSetArticleGroup(type,category,activity,group){
+function wlSetArticleGroup_(type,category,activity,group){
  type=String(type||'');category=String(category||'').trim();activity=String(activity||'');group=String(group||'');
  if(!['income','expense'].includes(type)||!category||category.length>250)throw Error('Некорректная статья');
  if((activity||group)&&!wlBddsGroupOptions_(type).some(x=>x.activity===activity&&x.group===group))throw Error('Выберите группу из списка');
@@ -1097,8 +1097,8 @@ function wlBddsFunds_(ss,year){
  const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone();
  sh.getRange(2,1,sh.getLastRow()-1,3).getValues().forEach(r=>{const m=wlMonthCellKey_(r[0],zone);if(!m||!m.startsWith(year+'-'))return;result[m]={begin:r[1]===''?null:Number(r[1]),end:r[2]===''?null:Number(r[2])};});return result;
 }
-function wlCfoGetFunds(month){month=wlKey_(month);const ss=wlStore_(),u=wlAdmin_(ss);wlRequireTab_(u,'ЦФО',false);return wlBddsFunds_(ss,month.slice(0,4));}
-function wlBddsSetFund(month,field,value){
+function wlCfoGetFunds_(month){month=wlKey_(month);const ss=wlStore_(),u=wlAdmin_(ss);wlRequireTab_(u,'ЦФО',false);return wlBddsFunds_(ss,month.slice(0,4));}
+function wlBddsSetFund_(month,field,value){
  month=wlKey_(month);if(!['begin','end'].includes(field))throw Error('Неизвестный показатель');
  if(value!==null&&(typeof value!=='number'||!Number.isFinite(value)))throw Error('Введите корректную сумму');
  return wlLock_(()=>{const ss=wlStore_(),u=wlAdmin_(ss);if(!wlCanSeeTab_(u,'ЦФО')&&!wlCanSeeTab_(u,'БДДС'))throw Error('Нет доступа к своду');wlFindMonth_(ss,month,false);
@@ -1109,7 +1109,7 @@ function wlBddsSetFund(month,field,value){
   sh.getRange(line,4,1,2).setValues([[new Date(),u.email]]);return wlBddsFunds_(ss,month.slice(0,4));});
 }
 /** Read the separately maintained 2026 report without changing either spreadsheet. */
-function wlBddsHistorical2026(){
+function wlBddsHistorical2026_(){
  const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'БДДС',false);
  const source=SpreadsheetApp.openById('1aVg5VqQkp1WSIeHYuK-SVrR5DRw22JqDy0qGhbN9Xkg'),sh=source.getSheetByName('БДДС');if(!sh)throw Error('В исходном файле не найден лист БДДС');
  const nr=Math.min(sh.getLastRow(),1000),nc=Math.min(sh.getLastColumn(),300);if(nr<2||nc<6)throw Error('В исходном БДДС не найдены данные');
@@ -1119,7 +1119,7 @@ function wlBddsHistorical2026(){
  const rows=shown.slice(1).filter(row=>String(row[0]||'').trim()).map(row=>({label:String(row[0]),cells:months.map(m=>row.slice(m.index,m.index+5).map(x=>String(x||'')))}));
  return {months:months.map(m=>m.key),rows};
 }
-function wlGetBddsPlan(year){
+function wlGetBddsPlan_(year){
  year=String(year||'');if(!/^\d{4}$/.test(year))throw Error('Неверный год');
  const ss=wlStore_(),u=wlUser_(ss);wlRequireTab_(u,'БДДС',false);
  if(!wlCanSeeBudgetYear_(u,year+'-01'))throw Error('Архив доступен только администратору');
@@ -1146,7 +1146,7 @@ function wlGetBddsPlan(year){
  Object.keys(comments).forEach(k=>{const m=k.slice(0,7);if(allowed.has(m))populatedMonths.add(m);});
  return {year,months:[...populatedMonths].sort(),articles:[...items.values()].sort((a,b)=>a.category.localeCompare(b.category,'ru')),unmapped:[...unmapped],comments,funds:u.admin?wlBddsFunds_(ss,year):{},sectionOrder:WL_BDDS_ORDER};
 }
-function wlBddsPostComment(year,month,key,text){
+function wlBddsPostComment_(year,month,key,text){
  year=String(year||'');month=wlKey_(month);key=String(key||'').trim();text=String(text||'').trim();
  if(month.slice(0,4)!==year||!key||key.length>250||!text||text.length>1600)throw Error('Некорректный комментарий');
  return wlLock_(()=>{
@@ -1172,7 +1172,7 @@ function wlBddsCommentEqual_(left,right){
  return a.length===b.length&&a.every((key,i)=>key===b[i]&&wlBddsCommentEqual_(left[key],right[key]));
 }
 /** Delete a specific comment, preserving a recoverable snapshot. */
-function wlBddsDeleteComment(year,month,key,expected){
+function wlBddsDeleteComment_(year,month,key,expected){
  year=String(year||'');month=wlKey_(month);key=String(key||'').trim();
  if(month.slice(0,4)!==year||!key||!expected||typeof expected!=='object')throw Error('Некорректный комментарий');
  return wlLock_(()=>{
@@ -1189,7 +1189,7 @@ function wlBddsDeleteComment(year,month,key,expected){
  });
 }
 /** Fact is explicitly requested and read-only. API schema is validated before displaying. */
-function wlBddsFetchFact(year,requestedMonth){
+function wlBddsFetchFact_(year,requestedMonth){
  year=String(year||'');if(!/^\d{4}$/.test(year))throw Error('Неверный год');
  requestedMonth=wlKey_(String(requestedMonth||''));if(!requestedMonth.startsWith(year+'-'))throw Error('Выберите месяц выбранного года');
  const currentMonth=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyy-MM');if(requestedMonth>=currentMonth)throw Error('Месяц ещё не завершился. План-факт доступен после окончания месяца.');

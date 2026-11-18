@@ -1,7 +1,7 @@
 /** Annual archive (Google Sheets import-compatible snapshot). No source operations are deleted. */
 const WL_YEAR_ARCHIVE_LINK_PREFIX='WL_DDS_YEAR_ARCHIVE_FILE_';
 
-function wlYearArchiveSnapshot(year,replaceExisting){
+function wlYearArchiveSnapshot_(year,replaceExisting){
   return wlLock_(()=>{const ss=wlStore_(),u=wlAdmin_(ss),value=String(year||''),result=wlCreateYearArchive_(value,!!replaceExisting,ss);
   if(value==='2026')wlArchiveHistoricalBdds2026_(result);
   PropertiesService.getScriptProperties().setProperty('WL_DDS_BDDS_ARCHIVED_'+value,'true');
@@ -72,7 +72,7 @@ function wlCreateYearArchive_(year,overwrite,source){
  * Google показывает отдельный экран разрешения на управление триггерами.
  * Эта функция ничего не создаёт и не меняет в бюджетных данных.
  */
-function wlAuthorizeYearArchive(){
+function wlAuthorizeYearArchive_(){
   const ss=wlStore_();wlAdmin_(ss);
   ScriptApp.requireScopes(ScriptApp.AuthMode.FULL,[
     'https://www.googleapis.com/auth/script.scriptapp'
@@ -82,14 +82,14 @@ function wlAuthorizeYearArchive(){
   return {ok:true,triggerCount:count};
 }
 /** Only admin may explicitly install the annual trigger; never run implicitly. */
-function wlEnableAnnualArchive(){
+function wlEnableAnnualArchive_(){
   const ss=wlStore_();wlAdmin_(ss);
-  const handler='wlRunAnnualArchive';
+  const handler='wlRunAnnualArchive_';
   try{
     if(!ScriptApp.getProjectTriggers().some(t=>t.getHandlerFunction()===handler))
       ScriptApp.newTrigger(handler).timeBased().everyDays(1).atHour(3).create();
   }catch(e){
-    if(wlYearArchiveMissingTriggerScope_(e))throw Error('Для автоархива требуется разрешение Google: в редакторе Apps Script один раз выполните wlAuthorizeYearArchive, подтвердите доступ, затем вернитесь и включите автоархивирование.');
+    if(wlYearArchiveMissingTriggerScope_(e))throw Error('Для автоархива требуется разрешение Google: в редакторе Apps Script один раз выполните wlAuthorizeYearArchive_, подтвердите доступ, затем вернитесь и включите автоархивирование.');
     throw e;
   }
   return {enabled:true};
@@ -98,7 +98,7 @@ function wlEnableAnnualArchive(){
 function wlYearArchiveMissingTriggerScope_(e){
   return /script\.scriptapp|permission|authorization|scope|разрешени|авторизац/i.test(String(e&&e.message||e));
 }
-function wlRunAnnualArchive(){
+function wlRunAnnualArchive_(){
   // Trigger runs as its creator. Verify identity against the initial project owner.
   const runAs=String(Session.getEffectiveUser().getEmail()||'').toLowerCase();
   if(!runAs)throw Error('Google не передал email исполнителя автоархива');
@@ -108,14 +108,14 @@ function wlRunAnnualArchive(){
   if(!wlMonthList_(ss).some(m=>m.key.startsWith(String(prev)+'-')))return;
   wlCreateYearArchive_(String(prev),false,ss);
 }
-function wlYearArchiveStatus(){
+function wlYearArchiveStatus_(){
   const ss=wlStore_();wlAdmin_(ss);
   const props=PropertiesService.getScriptProperties(),years=[...new Set(wlMonthList_(ss).map(m=>m.key.slice(0,4)))];
   const archives=years.map(y=>({year:y,detail:props.getProperty(WL_YEAR_ARCHIVE_LINK_PREFIX+y)||''}));
   // Список готовых архивов работает даже если ещё не выдано разрешение на триггеры.
   // Не подменяем неизвестное состояние словом «выключено».
   try{
-    return {archives,automationEnabled:ScriptApp.getProjectTriggers().some(t=>t.getHandlerFunction()==='wlRunAnnualArchive'),authorizationRequired:false};
+    return {archives,automationEnabled:ScriptApp.getProjectTriggers().some(t=>t.getHandlerFunction()==='wlRunAnnualArchive_'),authorizationRequired:false};
   }catch(e){
     if(!wlYearArchiveMissingTriggerScope_(e))throw e;
     return {archives,automationEnabled:null,authorizationRequired:true};

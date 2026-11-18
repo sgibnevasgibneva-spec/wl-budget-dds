@@ -107,7 +107,7 @@ function wlFinTabloDigest_(data){
 function wlFinTabloBudgetPreview_(month){
  month=wlKey_(month);const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'ФинТабло',false);if(month.startsWith('2026-')&&month<'2026-11')throw Error('Для исторических месяцев требуется сверка с исходным БДДС. Она пока не подключена.');wlFindMonth_(ss,month,false);
  const token=PropertiesService.getScriptProperties().getProperty(WL_FT_TOKEN_PROP_);if(!token)throw Error('Сначала сохраните ключ ФинТабло');
- const cat=wlFinTabloNormalize_(wlFinTabloFetch_()),local=new Map(),warnings=cat.warnings.slice(),dict=wlDictionaries_(ss),income=new Set(dict.incomeCategories.map(wlBddsNormalize_)),expense=new Set(dict.categories.map(wlBddsNormalize_));
+ const cat=wlFinTabloNormalize_(wlFinTabloFetch_()),local=new Map(),warnings=cat.warnings.filter(w=>!w.startsWith('Совпадающие названия разных статей.')),dict=wlDictionaries_(ss),income=new Set(dict.incomeCategories.map(wlBddsNormalize_)),expense=new Set(dict.categories.map(wlBddsNormalize_));
  for(const e of wlOpsRead_(wlOps_(ss),month)){const r=e.row,name=String(r.category||'').trim(),amount=Object.values(r.amounts||{}).reduce((s,v)=>s+(Number(v)||0),0);if(!amount)continue;if(!name){warnings.push('Есть сумма без статьи в отделе '+r.department);continue;}
   const normalized=wlBddsNormalize_(name),type=r.cashFlowType==='income'?'income':r.cashFlowType==='expense'?'expense':income.has(normalized)&&!expense.has(normalized)?'income':'expense',key=type+'|'+normalized,old=local.get(key)||{type,name,amount:0};old.amount+=amount;local.set(key,old);
  }
@@ -121,9 +121,9 @@ function wlFinTabloBudgetPreview_(month){
   if(matches.length!==1||!/^\d+$/.test(matches[0].id)){result.push({...item,status:'Статья не сопоставлена однозначно'});continue;}
   const id=Number(matches[0].id),entries=remote.filter(r=>Number(r.categoryId)===id&&String(r.date)===date),unknown=entries.some(r=>!Number.isFinite(Number(r.value))||r.value==null||r.value==='');
   if(unknown){result.push({...item,status:'Некорректные данные ФинТабло'});continue;}
-  const amount=entries.reduce((s,r)=>s+Number(r.value),0),status=entries.length===0?'Нет плана в ФинТабло':entries.length>1?'Несколько записей — проверить':entries[0].directionId!=null?'Есть направление — проверить':Math.abs(amount-item.amount)<0.005?'Совпадает':'Сумма отличается';
+  const amount=entries.reduce((s,r)=>s+Number(r.value),0),same=entries.length>0&&Math.abs(amount-item.amount)<0.005,status=entries.length===0?'Нет плана в ФинТабло':same?'Совпадает':'Сумма отличается — проверить';
   const journalKey="WL_FT_PLAN_PENDING_"+month.replace("-","")+"_"+id,pending=PropertiesService.getScriptProperties().getProperty(journalKey);
-  result.push({...item,categoryId:id,remoteAmount:entries.length?amount:null,remoteCount:entries.length,status:pending?"Не завершена проверка предыдущей отправки":status,action:pending?"blocked":entries.length===0?"create":entries.length===1&&entries[0].directionId==null&&Math.abs(amount-item.amount)<0.005?"skip":"blocked"});
+  result.push({...item,categoryId:id,remoteAmount:entries.length?amount:null,remoteCount:entries.length,status:pending?"Не завершена проверка предыдущей отправки":status,action:pending?"blocked":entries.length===0?"create":same?"skip":"blocked"});
  }
  const rows=result.sort((a,b)=>a.name.localeCompare(b.name,'ru')),hash=wlFinTabloDigest_({month,rows,warnings,remote});return {month,rows,warnings,remoteCount:remote.length,hash};
 }

@@ -389,9 +389,14 @@ function wlBoot_(){
   const props=PropertiesService.getScriptProperties(),archivedYears=[...new Set(active.map(m=>m.key.slice(0,4)))].filter(y=>props.getProperty('WL_DDS_BDDS_ARCHIVED_'+y)==='true');
   return {user,dict,months:active.map(m=>({key:m.key,status:m.status})),current,archivedYears,grouping:wlBddsGrouping_(ss)};
 }
-function wlRowOrder_(ss,key,department,rows){
- const sh=ss.getSheetByName('WL_Порядок_строк');if(!sh||sh.getLastRow()<2)return rows;
- const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone(),records=sh.getRange(2,1,sh.getLastRow()-1,3).getValues(),found=records.find(r=>wlMonthCellKey_(r[0],zone)===key&&String(r[1])===department);let ids=[];if(found)try{ids=JSON.parse(String(found[2]));}catch(_){}if(!Array.isArray(ids))return rows;
+function wlRowOrderIndex_(ss,key){
+ const sh=ss.getSheetByName('WL_Порядок_строк'),result=new Map();if(!sh||sh.getLastRow()<2)return result;
+ const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone(),records=sh.getRange(2,1,sh.getLastRow()-1,3).getValues();
+ for(const row of records)if(wlMonthCellKey_(row[0],zone)===key&&!result.has(String(row[1]))){try{const ids=JSON.parse(String(row[2]));if(Array.isArray(ids))result.set(String(row[1]),ids);}catch(_){}}
+ return result;
+}
+function wlRowOrder_(ss,key,department,rows,orderIndex){
+ const ids=(orderIndex||wlRowOrderIndex_(ss,key)).get(department);if(!ids)return rows;
  const rank=new Map(ids.map((id,i)=>[String(id),i]));return rows.map((row,i)=>({row,i})).sort((a,b)=>(rank.has(a.row.id)?rank.get(a.row.id):ids.length+a.i)-(rank.has(b.row.id)?rank.get(b.row.id):ids.length+b.i)).map(x=>x.row);
 }
 function wlMoveBudgetRow_(key,department,id,direction){
@@ -409,7 +414,8 @@ function wlGetMonth_(key){
   if(!wlCanSeeTab_(user,'Отделы')&&!wlCanSeeTab_(user,'ЦФО'))throw Error('Нет доступа к детальным данным бюджета');
   wlEnsureSkeleton_(ss,key);month=wlFindMonth_(ss,key);
   const visible=wlOpsRead_(wlOps_(ss),key).map(x=>x.row).filter(r=>user.view.includes(r.department));
-  const rows=user.view.flatMap(department=>wlRowOrder_(ss,key,department,visible.filter(r=>r.department===department)));
+  const orderIndex=wlRowOrderIndex_(ss,key),byDepartment=new Map();visible.forEach(row=>{if(!byDepartment.has(row.department))byDepartment.set(row.department,[]);byDepartment.get(row.department).push(row);});
+  const rows=user.view.flatMap(department=>wlRowOrder_(ss,key,department,byDepartment.get(department)||[],orderIndex));
   console.log('WL_PERF getMonth '+key+' '+(Date.now()-start)+'ms');
   return {key,month:{key:month.key,status:month.status},rows};
 }
@@ -1196,14 +1202,6 @@ function wlBddsFetchFact_(year,requestedMonth){
  const ss=wlStore_(),user=wlAdmin_(ss);wlRequireTab_(user,'БДДС',false);
  const token=PropertiesService.getScriptProperties().getProperty('WL_DDS_FINTABLO_API_TOKEN');if(!token)throw Error('Сначала сохраните ключ ФинТабло');
  const categories=wlFinTabloNormalize_(wlFinTabloFetch_()).candidates,grouping=wlBddsGrouping_(ss),report=wlFtReportClient_(token);
- const articles=wlFtReportArticles_(report(requestedMonth,'category'),categories,requestedMonth,grouping),byId=new Map(articles.map(a=>[a.id,a]));
- const dirs=report(requestedMonth,'direction'),departments=(wlDictionaries_(ss).departments||[]).map(d=>String(d.name||d)),norm=s=>wlBddsNormalize_(s),unmatched=[],matchedDepartments=[];
- for(const direction of dirs){
-  const matches=departments.filter(d=>norm(d)===norm(direction.name)),same=dirs.filter(d=>norm(d.name)===norm(direction.name));
-  if(matches.length!==1||same.length!==1||!direction.id){unmatched.push(String(direction.name||'Без направления'));continue;}
-  matchedDepartments.push(matches[0]);
-  const details=wlFtReportArticles_(report(requestedMonth,'category',direction.id),categories,requestedMonth,grouping);
-  for(const detail of details){const item=byId.get(detail.id);if(!item)continue;if(!item.byDepartment)item.byDepartment={};item.byDepartment[matches[0]]=detail.byMonth[requestedMonth];}
- }
- const result={year,month:requestedMonth,articles,unmatchedDirections:unmatched,matchedDepartments,readOnly:true,loadedAt:new Date().toISOString()};wlBddsStoreFact_(ss,result);return result;
+ const articles=wlFtReportArticles_(report(requestedMonth,'category'),categories,requestedMonth,grouping);
+ const result={year,month:requestedMonth,articles,readOnly:true,loadedAt:new Date().toISOString()};wlBddsStoreFact_(ss,result);return result;
 }

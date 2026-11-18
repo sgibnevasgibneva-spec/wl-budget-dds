@@ -3,5 +3,5 @@ const src=fs.readFileSync('Code.js','utf8');const fn=src.slice(src.indexOf('func
 const ctx={wlKey_:s=>s,Utilities:{formatDate:()=> '2026-11'},Session:{getScriptTimeZone:()=> 'Europe/Moscow'}};vm.createContext(ctx);vm.runInContext(fn,ctx);
 assert.throws(()=>ctx.wlBddsFetchFact_('2026','2026-11'),/ещё не завершился/);
 assert.throws(()=>ctx.wlBddsFetchFact_('2026','2027-01'),/месяц выбранного года/);
-assert(!fn.includes('/transaction'));assert(fn.includes("report(requestedMonth,'category')"));
+assert(!fn.includes('/transaction'));assert(fn.includes("report(requestedMonth,'category')"));assert(!fn.includes("report(requestedMonth,'direction')"));
 console.log('Unfinished months rejected; source is the read-only report, not transaction plans');

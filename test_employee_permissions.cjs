@@ -1,0 +1,5 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert'),s=fs.readFileSync('Code.js','utf8');const code=s.slice(s.indexOf('function wlUser_('),s.indexOf('/** Employees see',s.indexOf('function wlUser_(')));
+let rule={email:'worker@example.test',enabled:true,role:'user',legacyReadOnly:false,view:['HR'],edit:[],tabs:['Отделы'],tabEdit:[]};
+const c={WL_TAB_NAMES:['Отделы','ЦФО','Настройки'],wlCurrentEmail_:()=>rule.email,wlRules_:()=>[rule],wlDictionaries_:()=>({departments:[{name:'HR'},{name:'IT'}]})};vm.createContext(c);vm.runInContext(code,c);let user=c.wlUser_({});assert.deepEqual(Array.from(user.view),['HR']);assert.deepEqual(Array.from(user.edit),['HR']);assert.deepEqual(Array.from(user.tabEdit),['Отделы']);assert(!user.edit.includes('IT'));
+rule={...rule,view:['IT'],tabs:['Инструкция']};user=c.wlUser_({});assert.deepEqual(Array.from(user.tabEdit),[]);assert.deepEqual(Array.from(user.edit),['IT']);
+rule={...rule,enabled:false};assert.throws(()=>c.wlUser_({}));console.log('Existing employees can edit assigned departments only, and disabled accounts remain blocked');

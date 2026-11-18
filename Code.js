@@ -138,9 +138,9 @@ function wlUser_(ss){
   const admin=rule.role==='admin';
   const legacyReadOnly=!!rule.legacyTreasurer;
   const tabs=admin?WL_TAB_NAMES.slice():rule.tabs.filter(t=>WL_TAB_NAMES.includes(t)&&t!=='Настройки'&&t!=='ФинТабло');
-  const tabEdit=admin?WL_TAB_NAMES.slice():rule.tabEdit.filter(t=>t==='Отделы'&&tabs.includes(t));
+  const tabEdit=admin?WL_TAB_NAMES.slice():(!legacyReadOnly&&tabs.includes('Отделы')?['Отделы']:[]);
   return {email,name:rule.name||email,admin,view:admin?all:(legacyReadOnly&&!rule.view.length?all:rule.view.filter(v=>all.includes(v))),
-    edit:admin?all:(legacyReadOnly?[]:rule.edit.filter(v=>all.includes(v))),tabs,tabEdit:legacyReadOnly?[]:tabEdit};
+    edit:admin?all:(legacyReadOnly?[]:rule.view.filter(v=>all.includes(v))),tabs,tabEdit:legacyReadOnly?[]:tabEdit};
 }
 /** Employees see only current/future calendar years; administrators retain historic access. */
 function wlCanSeeBudgetYear_(user,key){
@@ -674,15 +674,15 @@ function wlSaveAccess_(item){
     const deps=wlDictionaries_(ss).departments.map(d=>d.name);
     const role=item.role==='admin'?'admin':'user';
     const view=role==='admin'?deps:(Array.isArray(item.view)?item.view:[]).filter(d=>deps.includes(d));
-    const edit=role==='admin'?deps:(Array.isArray(item.edit)?item.edit:[]).filter(d=>view.includes(d));
+    const edit=role==='admin'?deps:view.slice();
     const enabled=!!item.enabled;
     const tabs=role==='admin'?WL_TAB_NAMES:(Array.isArray(item.tabs)?item.tabs:WL_USER_DEFAULT_TABS).filter(t=>WL_TAB_NAMES.includes(t)&&t!=='Настройки'&&t!=='ФинТабло');
-    const tabEdit=role==='admin'?WL_TAB_NAMES:(Array.isArray(item.tabEdit)?item.tabEdit:[]).filter(t=>t==='Отделы'&&tabs.includes(t));
+    const tabEdit=role==='admin'?WL_TAB_NAMES:(tabs.includes('Отделы')?['Отделы']:[]);
     if(!tabs.length)throw Error('Выберите хотя бы одну доступную вкладку');
     if(email===owner&&!enabled)throw Error('Нельзя отключить учётную запись владельца');
     const sh=wlAccessSheet_(ss),rule=wlRules_(ss).find(r=>r.email===email);
     const row=[email,role,view.join('|'),edit.join('|'),enabled,tabs.join('|'),tabEdit.join('|'),name||((rule&&rule.name)||'')];
-    wlAuthRevoke_(email);if(rule)sh.getRange(rule.row,1,1,8).setValues([row]);else sh.appendRow(row);
+    if(!enabled)wlAuthRevoke_(email);if(rule)sh.getRange(rule.row,1,1,8).setValues([row]);else sh.appendRow(row);
     return wlGetSettings_();
   });
 }

@@ -8,6 +8,11 @@ const WL_FT_TOKEN_PROP_='WL_DDS_FINTABLO_API_TOKEN';
 const WL_FT_CLOSED_YEARS_PROP_='WL_DDS_CLOSED_YEARS';
 const WL_FT_ENDPOINT_='https://api.fintablo.ru/v1/category';
 
+function wlFinTabloKeyInfo_(){
+ const ss=wlStore_();wlAdmin_(ss);
+ const token=String(PropertiesService.getScriptProperties().getProperty(WL_FT_TOKEN_PROP_)||'');
+ return {configured:!!token,lastFour:token.length>=4?token.slice(-4):''};
+}
 function wlFinTabloSetToken_(token){
   const ss=wlStore_();wlAdmin_(ss);
   const value=String(token||'').trim();

@@ -228,7 +228,7 @@ header{flex:0 0 auto;position:relative;top:auto}
  <div class="settings-card admin-only hidden" id="ftSyncCard" style="margin-top:18px;max-width:960px">
   <h3>Загрузка статей из ФинТабло</h3>
   <p class="subtle">Читаем справочник ФинТабло. Исключаем архив, головные статьи с подстатьями и переводы. В ФинТабло ничего не изменяем. Исторические операции бюджета не удаляются.</p>
-  <div class="row"><input class="input" style="min-width:260px;flex:1" type="password" id="ftApiToken" autocomplete="new-password" placeholder="API-ключ ФинТабло (не отображается)"><button class="btn" type="button" id="ftSaveToken">Сохранить ключ</button><button class="btn" type="button" id="ftCheck">Получить статьи</button><button class="btn primary" type="button" id="ftApply" disabled>Применить выбранные</button></div>
+  <div class="row"><input class="input" style="min-width:260px;flex:1" type="password" id="ftApiToken" autocomplete="new-password" placeholder="API-ключ ФинТабло (не отображается)"><button class="btn" type="button" id="ftSaveToken">Сохранить ключ</button><button class="btn" type="button" id="ftKeyInfo">Проверить окончание ключа</button><button class="btn" type="button" id="ftCheck">Получить статьи</button><button class="btn primary" type="button" id="ftApply" disabled>Применить выбранные</button></div>
   <div id="ftTokenStatus" class="status" aria-live="polite"></div><div id="ftPreview" class="import-preview" style="white-space:normal;line-height:1.6" aria-live="polite">Нажмите «Получить статьи» для проверки изменений. Ни одна статья не изменится без подтверждения.</div>
  </div>
 <div class="settings-card admin-only hidden" style="margin-top:16px;max-width:960px">
@@ -862,6 +862,7 @@ function wire(){
   $('yearCloseButton').onclick=()=>yearAction('close');
  $('yearReopenButton').onclick=()=>yearAction('open');
  $('ftSaveToken').onclick=()=>{const input=$('ftApiToken');if(!input.value.trim())return ftStatus('Введите ключ');const val=input.value;input.value='';call('wlFinTabloSetToken',val).then(()=>ftStatus('Ключ сохранён. В коде и браузере он не отображается.')).catch(e=>ftStatus('Ошибка: '+(e.message||e)));};
+ $('ftKeyInfo').onclick=()=>call('wlFinTabloKeyInfo').then(r=>ftStatus(r.configured?'Последние четыре знака сохранённого ключа: '+r.lastFour:'Ключ ещё не сохранён.')).catch(e=>ftStatus('Ошибка: '+(e.message||e)));
  $('ftCheck').onclick=ftCheck;$('ftApply').onclick=ftApply;
  $('downloadExcelTemplate').onclick=downloadExcelTemplate;
  $('exportDept').onclick=downloadDepartmentBudget;

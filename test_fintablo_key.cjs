@@ -3,5 +3,5 @@ const props={getProperty:()=>stored,setProperty:(_k,v)=>{writes++;stored=v}},ctx
 vm.createContext(ctx);vm.runInContext(fs.readFileSync('FinTabloSync.js','utf8'),ctx);
 assert.throws(()=>ctx.wlFinTabloSetToken_('new-invalid-key'),/отклонил/);assert.equal(stored,'old-working-key');assert.equal(writes,0);
 mode='legacy_key_expired';assert.throws(()=>ctx.wlFinTabloFetch_(),/устарел/);mode='key_reissued';assert.throws(()=>ctx.wlFinTabloFetch_(),/перевыпущен/);
-mode='valid';ctx.wlFinTabloSetToken_('new-valid-key');assert.equal(stored,'new-valid-key');assert.equal(writes,1);
+mode='valid';ctx.wlFinTabloSetToken_('new-valid-key');assert.equal(stored,'new-valid-key');assert.equal(writes,1);const info=ctx.wlFinTabloKeyInfo_();assert.equal(info.lastFour,'-key');assert(!JSON.stringify(info).includes(stored));
 console.log('Invalid keys are rejected without replacing the existing key; specific 401 reasons are readable');

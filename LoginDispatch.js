@@ -26,6 +26,7 @@ function wlRpc(token,name,args){
 "wlFinTabloBudgetSend":wlFinTabloBudgetSend_,
 "wlFinTabloPreview":wlFinTabloPreview_,
 "wlFinTabloSetToken":wlFinTabloSetToken_,
+"wlFinTabloKeyInfo":wlFinTabloKeyInfo_,
 "wlGetBddsPlan":wlGetBddsPlan_,
 "wlGetMonth":wlGetMonth_,
 "wlGetSettings":wlGetSettings_,

@@ -1101,7 +1101,7 @@ function wlBddsComments_(ss,year){
   if(String(row[0])!==year)return;
   const month=wlMonthCellKey_(row[1],zone);if(!month)return;
   try{let messages=JSON.parse(String(row[3])||'[]');if(Array.isArray(messages)){const key=month+'|'+row[2];all[key]=(all[key]||[]).concat(messages);}}catch(_){ }
- });Object.keys(all).forEach(key=>{all[key].sort((a,b)=>String(a.at||'').localeCompare(String(b.at||'')));all[key]=all[key].slice(-30);});return all;
+ });Object.keys(all).forEach(key=>{all[key].sort((a,b)=>String(a.at||'').localeCompare(String(b.at||'')));all[key]=wlBddsLimitComments_(wlBddsKeepSourceDismissal_(key.slice(8),all[key]));});return all;
 }
 function wlBddsFunds_(ss,year){
  const result={},sh=ss.getSheetByName('WL_БДДС_Фонды');if(!sh||sh.getLastRow()<2)return result;
@@ -1169,9 +1169,10 @@ function wlBddsPostComment_(year,month,key,text){
   const line=idx<0?sh.getLastRow()+1:idx+2;
   let messages=[];if(idx>=0){try{messages=JSON.parse(String(sh.getRange(line,4).getValue())||'[]');}catch(_){}}
   if(!Array.isArray(messages))messages=[];
+  if(idx>=0)messages=wlBddsKeepSourceDismissal_(key,messages);
   messages.push({text,by:user.name,email:user.email,at:new Date().toISOString()});
   if(idx<0)sh.getRange(line,1,1,3).setValues([[year,month,key]]);
-  sh.getRange(line,4,1,2).setValues([[JSON.stringify(messages.slice(-30)),new Date()]]);
+  sh.getRange(line,4,1,2).setValues([[JSON.stringify(wlBddsLimitComments_(messages)),new Date()]]);
   return {ok:true,messages:wlBddsComments_(ss,year)[month+'|'+key]||[]};
  });
 }
@@ -1195,7 +1196,9 @@ function wlBddsDeleteComment_(year,month,key,expected){
   if(matches.length!==1)throw Error('Комментарий изменился или неоднозначен. Обновите отчёт');
   const {idx,i,messages}=matches[0],removed=messages[i],now=new Date(),archive=wlNewSheet_(ss,'WL_БДДС_Удалённые комментарии',['Год','Месяц','Ключ','Комментарий JSON','Удалено','Кто удалил']);
   archive.appendRow([year,month,key,JSON.stringify(removed),now,user.email]);
-  messages.splice(i,1);sh.getRange(idx+2,4,1,2).setValues([[JSON.stringify(messages),now]]);
+  messages.splice(i,1);
+  if(key.startsWith('history|')&&!messages.some(n=>n.kind==='history-source'))messages.push({kind:'history-source',inherit:true,text:''});
+  sh.getRange(idx+2,4,1,2).setValues([[JSON.stringify(messages),now]]);
   return {ok:true,messages:wlBddsComments_(ss,year)[month+'|'+key]||[]};
  });
 }

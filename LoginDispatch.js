@@ -14,6 +14,7 @@ function wlRpc(token,name,args){
 "wlBddsSavedFacts":wlBddsSavedFacts_,
 "wlBddsSetFund":wlBddsSetFund_,
 "wlBddsSetHint":wlBddsSetHint_,
+"wlBddsSetSourceComment":wlBddsSetSourceComment_,
 "wlBoot":wlBoot_,
 "wlCfoGetFunds":wlCfoGetFunds_,
 "wlDeleteRow":wlDeleteRow_,

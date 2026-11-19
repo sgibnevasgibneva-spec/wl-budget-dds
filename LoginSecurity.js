@@ -2,7 +2,8 @@
 let WL_AUTH_EMAIL='';
 function wlAuthDigest_(s){return Utilities.base64EncodeWebSafe(Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256,String(s),Utilities.Charset.UTF_8)).replace(/=+$/,'');}
 function wlAuthToken_(){return Utilities.getUuid().replace(/-/g,'')+Utilities.getUuid().replace(/-/g,'');}
-function wlAuthEpoch_(email){return PropertiesService.getScriptProperties().getProperty('WL_AUTH_EPOCH_'+wlAuthDigest_(email))||'0';}
+function wlAuthReadProperties_(){return typeof wlReadProperties_==='function'?wlReadProperties_():PropertiesService.getScriptProperties();}
+function wlAuthEpoch_(email){return wlAuthReadProperties_().getProperty('WL_AUTH_EPOCH_'+wlAuthDigest_(email))||'0';}
 function wlAuthSessionIndexKey_(email){return 'WL_AUTH_SESSIONS_'+wlAuthDigest_(email);}
 function wlAuthSessionKey_(hash){return 'WL_AUTH_SESSION_'+hash;}
 function wlAuthSessionIndex_(props,email){try{const ids=JSON.parse(props.getProperty(wlAuthSessionIndexKey_(email))||'[]');return Array.isArray(ids)?ids.filter(x=>typeof x==='string'):[];}catch(_){return [];}}
@@ -41,7 +42,7 @@ function wlVerifyLogin(email,code){
 }
 function wlAuthSession_(token){
  if(!/^[a-f0-9]{64}$/i.test(String(token||'')))throw Error('Войдите в приложение');
- const hash=wlAuthDigest_(token),props=PropertiesService.getScriptProperties(),cache=CacheService.getScriptCache(),stored=props.getProperty(wlAuthSessionKey_(hash));
+ const hash=wlAuthDigest_(token),props=wlAuthReadProperties_(),cache=CacheService.getScriptCache(),stored=props.getProperty(wlAuthSessionKey_(hash));
  let session,legacy=false;try{session=JSON.parse(stored||cache.get('session:'+hash));legacy=!stored&&!!session;}catch(_){}
  if(!session||!session.email||(legacy&&(!Number.isFinite(session.expires)||session.expires<=Date.now()))||session.epoch!==wlAuthEpoch_(session.email)||!wlAuthRules_(session.email))throw Error('Сеанс истёк или доступ отозван. Войдите снова');
  if(legacy){const lock=LockService.getScriptLock();lock.waitLock(30000);try{if(session.epoch!==wlAuthEpoch_(session.email)||!wlAuthRules_(session.email))throw Error('Сеанс истёк или доступ отозван. Войдите снова');wlAuthRemember_(token,session);cache.remove('session:'+hash);}finally{lock.releaseLock();}}

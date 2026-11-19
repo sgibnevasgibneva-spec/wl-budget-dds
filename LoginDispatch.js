@@ -51,5 +51,9 @@ function wlRpc(token,name,args){
  };if(!Object.prototype.hasOwnProperty.call(methods,name))throw Error('Неизвестная команда');
  WL_AUTH_EMAIL=email;try{const result=methods[name](...args);if(name==='wlStartup')result.timing={...result.timing,authMs:authenticated-requestStarted,requestServerMs:Date.now()-requestStarted};return result;}finally{WL_AUTH_EMAIL='';}
  };
- return name==='wlStartup'?wlReadSnapshot_(dispatch):dispatch();
+ if(name==='wlStartup'){
+  const started=Date.now(),fast=wlTryStartupBatch_(token,dispatch);if(fast)return fast;
+  const result=wlReadSnapshot_(dispatch);result.timing={...result.timing,readMode:'regular',requestServerMs:Date.now()-started};return result;
+ }
+ return dispatch();
 }

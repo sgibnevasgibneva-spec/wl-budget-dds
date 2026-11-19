@@ -16,6 +16,7 @@ const WL_ACCESS_COLUMNS=['Email','Роль','Видит отделы (через
 
 function doGet(){return HtmlService.createHtmlOutputFromFile('Index').setTitle('WL | Бюджет ДДС').addMetaTag('viewport','width=device-width,initial-scale=1');}
 
+function wlReadProperties_(){return typeof WL_STARTUP_READ_PROPERTIES!=='undefined'&&WL_STARTUP_READ_PROPERTIES||PropertiesService.getScriptProperties();}
 function wlStore_(){
   const props=PropertiesService.getScriptProperties();
   const id=props.getProperty(WL_PREFIX+'SPREADSHEET_ID');
@@ -63,15 +64,15 @@ function wlDictSheet_(ss){
   return sh;
 }
 /** A single cache for non-secret reference lists; permissions are NEVER cached. */
-function wlDictionaries_(ss){
+function wlDictionaries_(ss,fresh){
   const cache=CacheService.getScriptCache(),cacheKey=WL_PREFIX+'DICTIONARIES_V6';
-  const stored=cache.get(cacheKey);
+  const stored=fresh?null:cache.get(cacheKey);
   if(stored){try{return JSON.parse(stored);}catch(e){cache.remove(cacheKey);}}
   const sh=wlDictSheet_(ss),n=sh.getLastRow();
   const arr=n>1?sh.getRange(2,1,n-1,WL_KEYS.length).getDisplayValues():[];
   const d={};WL_KEYS.forEach((key,i)=>d[key]=[...new Set(arr.map(row=>String(row[i]||'').trim()).filter(Boolean))]);
   d.departments=d.departments.map(v=>({name:v}));
-  const json=JSON.stringify(d);if(json.length<90000)cache.put(cacheKey,json,300);
+  const json=JSON.stringify(d);if(!fresh&&json.length<90000)cache.put(cacheKey,json,300);
   return d;
 }
 function wlInvalidateDictionaries_(){CacheService.getScriptCache().remove(WL_PREFIX+'DICTIONARIES_V6');}
@@ -92,13 +93,14 @@ function wlMonthCellKey_(value, tz){
   return '';
 }
 function wlMonthList_(ss){
-  const closedYears=JSON.parse(PropertiesService.getScriptProperties().getProperty('WL_DDS_CLOSED_YEARS')||'[]');
+  const closedYears=JSON.parse(wlReadProperties_().getProperty('WL_DDS_CLOSED_YEARS')||'[]');
   const sh=wlMonthSheet_(ss),v=sh.getLastRow()>1?sh.getRange(2,1,sh.getLastRow()-1,6).getValues():[];
   const zone=ss.getSpreadsheetTimeZone()||Session.getScriptTimeZone();
   return v.map((r,i)=>({row:i+2,key:wlMonthCellKey_(r[0],zone),status:closedYears.includes(String(wlMonthCellKey_(r[0],zone)).slice(0,4))?'Закрыт':String(r[1]||'Открыт'),active:r[2]!==false&&String(r[2]).toLowerCase()!=='false',clonedFrom:String(r[4]||'')})).filter(m=>/^\d{4}-(0[1-9]|1[0-2])$/.test(m.key)).sort((a,b)=>a.key.localeCompare(b.key));
 }
 function wlFindMonth_(ss,key,includeHidden){const m=wlMonthList_(ss).find(x=>x.key===wlKey_(key));if(!m||(!includeHidden&&!m.active))throw Error('Месяц отсутствует в списке');return m;}
 function wlEnsureDefaultMonths_(ss){
+  if(typeof WL_STARTUP_READ_PROPERTIES!=='undefined'&&WL_STARTUP_READ_PROPERTIES)throw Error('STARTUP_NEEDS_RECONCILE');
   const sh=wlMonthSheet_(ss);
   // Если месяцы существуют, включая закрытые и скрытые, не меняем настройки.
   if(wlMonthList_(ss).length)return;
@@ -272,9 +274,10 @@ function wlTemplateSignature_(r){const f=wlTemplateFields_(r);return JSON.string
  * Уже существующие суммы текущего месяца, индивидуальные правки и удалённые строки сохраняются.
  * При первом обращении к дальнему месяцу последовательно достраиваются промежуточные месяцы. */
 function wlEnsureSkeleton_(ss,key){
-  const props=PropertiesService.getScriptProperties();
+  const props=wlReadProperties_();
   // Once a day re-check external sheet edits, or immediately after source-month edits.
   if(wlSkeletonIsCurrent_(props,key))return;
+  if(typeof WL_STARTUP_READ_PROPERTIES!=='undefined'&&WL_STARTUP_READ_PROPERTIES)throw Error('STARTUP_NEEDS_RECONCILE');
   return wlLock_(()=>{
     if(wlSkeletonIsCurrent_(props,key))return;
     const periods=wlMonthList_(ss).filter(x=>x.key<=key),ops=wlOps_(ss),last=ops.getLastRow(),snapshot=last>1?ops.getRange(2,1,last-1,3).getValues():[];
@@ -388,7 +391,7 @@ function wlBoot_(){
   console.log('WL_PERF boot '+(Date.now()-start)+'ms');
   const nowKey=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyy-MM');
   const current=active.some(m=>m.key===nowKey)?nowKey:(active.filter(m=>m.key<=nowKey).slice(-1)[0]||active[0]).key;
-  const props=PropertiesService.getScriptProperties(),archivedYears=[...new Set(active.map(m=>m.key.slice(0,4)))].filter(y=>props.getProperty('WL_DDS_BDDS_ARCHIVED_'+y)==='true');
+  const props=wlReadProperties_(),archivedYears=[...new Set(active.map(m=>m.key.slice(0,4)))].filter(y=>props.getProperty('WL_DDS_BDDS_ARCHIVED_'+y)==='true');
   return {user,dict,months:active.map(m=>({key:m.key,status:m.status})),current,archivedYears,grouping:wlBddsGrouping_(ss)};
 }
 function wlRowOrderIndex_(ss,key){

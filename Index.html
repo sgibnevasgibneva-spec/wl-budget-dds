@@ -773,7 +773,7 @@ function employeeLoginCodeCell(rule){
  if(!rule.enabled){td.textContent='Доступ отключён';return td;}
  if(rule.loginCode){const input=document.createElement('input');input.type='text';input.readOnly=true;input.value=rule.loginCode;input.className='employee-code';input.setAttribute('aria-label','Личный код: '+(rule.name||rule.email));input.title='Нажмите, чтобы скопировать';input.onclick=async()=>{input.select();try{await navigator.clipboard.writeText(input.value);$('loginCodesStatus').textContent='Код скопирован: '+(rule.name||rule.email);}catch(_){$('loginCodesStatus').textContent='Код выделен — нажмите Ctrl+C';}};td.appendChild(input);}
  else if(rule.codeVersion){const input=document.createElement('input');input.type='text';input.className='employee-code';input.placeholder='Вставьте выданный код';input.setAttribute('aria-label','Сохранить выданный код: '+(rule.name||rule.email));input.title='Сохранить для показа прежний код без замены';input.onpaste=e=>{const text=e.clipboardData&&e.clipboardData.getData('text');if(text){e.preventDefault();rememberEmployeeCodes(rule.email,text,input);}};input.onchange=()=>{if(input.value.trim())rememberEmployeeCodes(rule.email,input.value,input);};td.appendChild(input);}
- else td.textContent='Ещё не создан';
+ else {const create=document.createElement('button');create.type='button';create.className='btn primary small';create.textContent='Создать код';create.dataset.loginCode='';create.disabled=loginCodesBusy;create.onclick=()=>{if(loginCodesBusy)return;create.disabled=true;create.textContent='Создаём…';return issueLoginCodes([rule.email],{});};td.appendChild(create);}
  return td;
 }
 function rememberEmployeeCodes(email,text,input){

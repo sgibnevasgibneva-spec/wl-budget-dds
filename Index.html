@@ -748,10 +748,12 @@ function loadReviews(){
 
 function renderLoginCodesToolbar(body){
  const bar=document.createElement('div');bar.className='row';bar.style.marginBottom='12px';
- const missing=settings.rules.filter(r=>r.enabled&&r.role!=='admin'&&!r.codeVersion);
+ const employees=settings.rules.filter(r=>r.enabled&&r.role!=='admin'),missing=employees.filter(r=>!r.codeVersion);
  const button=document.createElement('button');button.type='button';button.className='btn primary';button.dataset.loginCode='';button.disabled=loginCodesBusy||!missing.length;
  button.textContent=loginCodesBusy?'Создаём коды…':'Создать коды сотрудникам'+(missing.length?' ('+missing.length+')':'');
- button.onclick=()=>issueLoginCodes(missing.map(r=>r.email),{});bar.appendChild(button);
+ const include=document.createElement('input');include.type='checkbox';include.disabled=loginCodesBusy;include.dataset.loginCode='';const label=document.createElement('label');label.appendChild(include);label.appendChild(document.createTextNode(' Включить ранее созданные коды'));
+ include.onchange=()=>{button.disabled=loginCodesBusy||!(include.checked?employees:missing).length;button.textContent='Создать коды сотрудникам ('+(include.checked?employees:missing).length+')';};
+ button.onclick=()=>{const chosen=include.checked?employees:missing,existing=chosen.filter(r=>r.codeVersion);if(loginCodesBusy||!chosen.length)return;if(existing.length&&!confirm('Создать общий список? Ранее созданные коды '+existing.length+' сотрудников перестанут работать. Код администратора останется прежним.'))return;issueLoginCodes(chosen.map(r=>r.email),Object.fromEntries(existing.map(r=>[r.email,r.codeVersion])));};bar.appendChild(button);if(employees.some(r=>r.codeVersion))bar.appendChild(label);
  const status=document.createElement('span');status.className='subtle';status.id='loginCodesStatus';status.textContent=missing.length?'Создаются только недостающие коды.':'Коды созданы для всех активных сотрудников.';bar.appendChild(status);body.appendChild(bar);
 }
 async function issueLoginCodes(emails,replacements){

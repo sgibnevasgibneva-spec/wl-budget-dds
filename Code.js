@@ -668,7 +668,7 @@ function wlDictionaryRemove_(kind,value){
     sh.getRange(pos+2,i+1).clearContent();wlInvalidateDictionaries_();return wlDictionaries_(ss);
   });
 }
-function wlGetSettings_(){const ss=wlStore_();wlAdmin_(ss);return {rules:wlRules_(ss).map(r=>({email:r.email,name:r.name||'',role:r.role,view:r.view,edit:r.edit,tabs:r.role==='admin'?WL_TAB_NAMES:r.tabs,tabEdit:r.role==='admin'?WL_TAB_NAMES:r.tabEdit,enabled:r.enabled})),departments:wlDictionaries_(ss).departments.map(d=>d.name),tabs:WL_TAB_NAMES,spreadsheetUrl:ss.getUrl()};}
+function wlGetSettings_(){const ss=wlStore_();wlAdmin_(ss);const codeProps=PropertiesService.getScriptProperties().getProperties(),codeVersion=email=>{const raw=codeProps[wlAuthCredentialKey_(email)];return raw?wlAuthDigest_(raw):'';};return {rules:wlRules_(ss).map(r=>({email:r.email,name:r.name||'',codeVersion:codeVersion(r.email),role:r.role,view:r.view,edit:r.edit,tabs:r.role==='admin'?WL_TAB_NAMES:r.tabs,tabEdit:r.role==='admin'?WL_TAB_NAMES:r.tabEdit,enabled:r.enabled})),departments:wlDictionaries_(ss).departments.map(d=>d.name),tabs:WL_TAB_NAMES,spreadsheetUrl:ss.getUrl()};}
 function wlSaveAccess_(item){
   return wlLock_(()=>{
     const ss=wlStore_();wlAdmin_(ss);

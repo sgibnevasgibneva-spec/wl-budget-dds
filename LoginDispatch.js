@@ -5,6 +5,7 @@ function wlRpc(token,name,args){
  "wlStartup":wlStartup_,
  "wlMigrateLoginTriggers":wlMigrateLoginTriggers_,
 "wlGenerateLoginCode":wlGenerateLoginCode_,
+"wlIssueEmployeeCodes":wlIssueEmployeeCodes_,
 "wlApplyExcelRoundTrip":wlApplyExcelRoundTrip_,
 "wlBddsDeleteComment":wlBddsDeleteComment_,
 "wlBddsEditComment":wlBddsEditComment_,

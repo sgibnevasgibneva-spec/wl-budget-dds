@@ -8,11 +8,11 @@ const request=crypto.randomUUID(),emails=['a@test.local','b@test.local'];
 assert.throws(()=>c.wlIssueEmployeeCodes_([...emails,'owner@test.local'],request,{}));assert(!values.has(c.wlAuthCredentialKey_(emails[0])));
 assert.throws(()=>c.wlIssueEmployeeCodes_([...emails,'off@test.local'],request,{}));assert(!values.has(c.wlAuthCredentialKey_(emails[0])));
 admin=false;assert.throws(()=>c.wlIssueEmployeeCodes_(emails,request,{}));admin=true;
-const first=c.wlIssueEmployeeCodes_(emails,request,{}).items;assert.equal(first.length,2);assert.notEqual(first[0].code,first[1].code);first.forEach(x=>{assert.match(x.code,/^[a-f0-9]{20}$/);assert(![...values.values()].some(v=>String(v).includes(x.code)));});
+const first=c.wlIssueEmployeeCodes_(emails,request,{}).items;assert.equal(first.length,2);assert.notEqual(first[0].code,first[1].code);first.forEach(x=>{assert.match(x.code,/^[a-f0-9]{20}$/);assert(!values.get(c.wlAuthCredentialKey_(x.email)).includes(x.code));});
 const employeeSession=c.wlVerifyLogin(first[0].email,first[0].code).token,epoch=c.wlAuthEpoch_(first[0].email);
 const repeated=c.wlIssueEmployeeCodes_(emails,request,{}).items;assert.deepEqual(Array.from(repeated,x=>x.code),Array.from(first,x=>x.code));assert.equal(c.wlAuthEpoch_(first[0].email),epoch);assert.equal(c.wlAuthSession_(employeeSession),first[0].email);
 const another=c.wlIssueEmployeeCodes_(emails,crypto.randomUUID(),{}).items;assert(another.every(x=>x.status==='existing'&&!x.code));assert.equal(c.wlAuthSession_(employeeSession),first[0].email);
-entries.clear();const expired=c.wlIssueEmployeeCodes_(emails,request,{}).items;assert(expired.every(x=>x.status==='existing'&&!x.code));assert.equal(c.wlAuthSession_(employeeSession),first[0].email);
+entries.clear();const expired=c.wlIssueEmployeeCodes_(emails,request,{}).items;assert.deepEqual(Array.from(expired,x=>x.code),Array.from(first,x=>x.code));assert.equal(c.wlAuthSession_(employeeSession),first[0].email);
 const replaceRequest=crypto.randomUUID(),replacement={[first[0].email]:first[0].codeVersion},changed=c.wlIssueEmployeeCodes_([first[0].email],replaceRequest,replacement).items[0];assert.notEqual(changed.code,first[0].code);assert.throws(()=>c.wlAuthSession_(employeeSession));assert.throws(()=>c.wlVerifyLogin(first[0].email,first[0].code));assert(c.wlVerifyLogin(first[0].email,changed.code).token);
 assert.equal(c.wlIssueEmployeeCodes_([first[0].email],replaceRequest,replacement).items[0].code,changed.code);
 assert.throws(()=>c.wlIssueEmployeeCodes_([first[0].email],crypto.randomUUID(),replacement));
@@ -20,9 +20,9 @@ assert.equal(values.get(c.wlAuthCredentialKey_('owner@test.local')),ownerCredent
 console.log('Bulk employee codes: replay-safe, existing codes preserved, guarded replacement, admin excluded, inactive recipients blocked');
 
 (async()=>{
- const html=fs.readFileSync('Index.html','utf8'),source=html.slice(html.indexOf('async function issueLoginCodes('),html.indexOf('function renderIssuedLoginCodes('));let resolve,requests=0,renders=0;const status={};
- const u={loginCodesBusy:false,loginCodesRequest:null,issuedLoginCodes:new Map(),settings:{rules:[{email:emails[0],codeVersion:''}]},genId:()=>crypto.randomUUID(),document:{querySelectorAll:()=>[{disabled:false}]},$:()=>status,renderSettings:()=>renders++,call:()=>{requests++;return new Promise(r=>resolve=r);}};vm.createContext(u);vm.runInContext(source,u);
- const one=u.issueLoginCodes([emails[0]],{}),two=u.issueLoginCodes([emails[0]],{});assert.equal(requests,1);resolve({items:[first[0]]});await Promise.all([one,two]);assert.equal(renders,1);assert.equal(u.issuedLoginCodes.size,1);assert.equal(u.loginCodesBusy,false);assert.equal(u.settings.rules[0].codeVersion,first[0].codeVersion);
+ const html=fs.readFileSync('Index.html','utf8'),source=html.slice(html.indexOf('async function issueLoginCodes('),html.indexOf('function employeeLoginCodeCell('));let resolve,requests=0,renders=0;const status={};
+ const u={loginCodesBusy:false,loginCodesRequest:null,settings:{rules:[{email:emails[0],codeVersion:''}]},genId:()=>crypto.randomUUID(),document:{querySelectorAll:()=>[{disabled:false}]},$:()=>status,renderSettings:()=>renders++,call:()=>{requests++;return new Promise(r=>resolve=r);}};vm.createContext(u);vm.runInContext(source,u);
+ const one=u.issueLoginCodes([emails[0]],{}),two=u.issueLoginCodes([emails[0]],{});assert.equal(requests,1);resolve({items:[first[0]]});await Promise.all([one,two]);assert.equal(renders,1);assert.equal(u.settings.rules[0].loginCode,first[0].code);assert.equal(u.loginCodesBusy,false);assert.equal(u.settings.rules[0].codeVersion,first[0].codeVersion);
  let rejectedId;u.call=(_n,_e,id)=>{rejectedId=id;return Promise.reject(Error('connection'));};await u.issueLoginCodes([emails[0]],{});assert.equal(u.loginCodesBusy,false);u.call=(_n,_e,id)=>{assert.equal(id,rejectedId);return Promise.resolve({items:[first[0]]});};await u.issueLoginCodes([emails[0]],{});assert.equal(u.loginCodesRequest,null);
  console.log('UI double-click sends one request; a failed response retries with the same issuance ID');
 })().catch(e=>{console.error(e);process.exitCode=1});

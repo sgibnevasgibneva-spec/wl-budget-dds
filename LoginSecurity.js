@@ -11,12 +11,13 @@ function wlAuthRevoke_(email){const props=PropertiesService.getScriptProperties(
 function wlAuthRemember_(token,session){const props=PropertiesService.getScriptProperties(),hash=wlAuthDigest_(token),ids=wlAuthSessionIndex_(props,session.email).filter(id=>id!==hash);ids.push(hash);while(ids.length>12)props.deleteProperty(wlAuthSessionKey_(ids.shift()));props.setProperty(wlAuthSessionKey_(hash),JSON.stringify({email:session.email,epoch:session.epoch}));props.setProperty(wlAuthSessionIndexKey_(session.email),JSON.stringify(ids));}
 function wlAuthRules_(email){return wlRules_(wlStore_()).some(r=>r.enabled&&r.email===email);}
 function wlAuthCredentialKey_(email){return 'WL_AUTH_CODE_'+wlAuthDigest_(email);}
-function wlAuthEraseCode_(email){PropertiesService.getScriptProperties().deleteProperty(wlAuthCredentialKey_(email));wlAuthRevoke_(email);}
+function wlAuthEraseCode_(email){PropertiesService.getScriptProperties().deleteProperty('WL_AUTH_DISPLAY_'+wlAuthDigest_(email));PropertiesService.getScriptProperties().deleteProperty(wlAuthCredentialKey_(email));wlAuthRevoke_(email);}
 function wlGenerateLoginCode_(email){
  return wlLock_(()=>{
   const ss=wlStore_();wlAdmin_(ss);email=String(email||'').trim().toLowerCase();
   if(!wlAuthRules_(email))throw Error('Сначала сохраните активный доступ сотрудника');
   const code=wlAuthToken_().slice(0,20),salt=wlAuthToken_();
+  PropertiesService.getScriptProperties().deleteProperty('WL_AUTH_DISPLAY_'+wlAuthDigest_(email));
   PropertiesService.getScriptProperties().setProperty(wlAuthCredentialKey_(email),JSON.stringify({salt,hash:wlAuthDigest_(salt+'|'+email+'|'+code)}));
   wlAuthRevoke_(email);const cache=CacheService.getScriptCache(),key=wlAuthDigest_(email);cache.remove('blocked:'+key);cache.remove('fail:'+key);return {code};
  });

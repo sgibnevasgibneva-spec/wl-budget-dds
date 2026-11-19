@@ -1,13 +1,13 @@
 /** Fresh Sheets values for one startup request. Never caches access rules across requests. */
 let WL_STARTUP_READ_PROPERTIES=null;
+let WL_STARTUP_BATCH_FALLBACK='';
 
 function wlStartupBatchStore_(id){
  const specs=[['Настройки доступа',8],['Справочники',5],['Периоды',6],['Операции',3],['WL_Порядок_строк',3],['WL_Группы_статей',4]];
  const ranges=specs.map(([name,width])=>"'"+name+"'!A:"+String.fromCharCode(64+width));
- const url='https://sheets.googleapis.com/v4/spreadsheets/'+encodeURIComponent(id)+'/values:batchGet?valueRenderOption=UNFORMATTED_VALUE&dateTimeRenderOption=SERIAL_NUMBER&'+ranges.map(r=>'ranges='+encodeURIComponent(r)).join('&');
- const response=UrlFetchApp.fetch(url,{method:'get',muteHttpExceptions:true,followRedirects:false,headers:{Authorization:'Bearer '+ScriptApp.getOAuthToken()}});
- if(response.getResponseCode()!==200)throw Error('BATCH_HTTP_'+response.getResponseCode());
- const result=JSON.parse(response.getContentText());
+ // The manifest enables Sheets v4, including its API in the default Cloud project.
+ // Apps Script supplies authorization; no extra OAuth token or HTTP request is needed.
+ const result=Sheets.Spreadsheets.Values.batchGet(id,{ranges,valueRenderOption:'UNFORMATTED_VALUE',dateTimeRenderOption:'SERIAL_NUMBER'});
  if(!Array.isArray(result.valueRanges)||result.valueRanges.length!==specs.length)throw Error('BATCH_SHAPE');
  const sheets=new Map();
  specs.forEach(([name,width],i)=>{
@@ -30,13 +30,18 @@ function wlStartupBatchStore_(id){
 
 /** Validate persistent session before reading the sheet. Legacy sessions use the normal migration. */
 function wlTryStartupBatch_(token,dispatch){
+ WL_STARTUP_BATCH_FALLBACK='';
  if(!/^[a-f0-9]{64}$/i.test(String(token||'')))return null;
  const started=Date.now(),all=PropertiesService.getScriptProperties().getProperties();
  let session;try{session=JSON.parse(all[wlAuthSessionKey_(wlAuthDigest_(token))]||'null');}catch(_){}
  if(!session||!session.email||session.epoch!==(all['WL_AUTH_EPOCH_'+wlAuthDigest_(session.email)]||'0'))return null;
  const id=all[WL_PREFIX+'SPREADSHEET_ID'];if(!id)return null;
  let ss;
- try{ss=wlStartupBatchStore_(id);}catch(e){console.log('WL_STARTUP_BATCH fallback '+String(e.message||'').match(/^BATCH_[A-Z0-9_]+$/)?.[0]);return null;}
+ try{ss=wlStartupBatchStore_(id);}catch(e){
+  const message=String(e.message||''),known=message.match(/^BATCH_[A-Z0-9_]+$/);
+  WL_STARTUP_BATCH_FALLBACK=known?known[0]:/not been used|disabled|accessNotConfigured/i.test(message)?'BATCH_API_DISABLED':/permission|forbidden|403/i.test(message)?'BATCH_PERMISSION_DENIED':/range|sheet.*not found/i.test(message)?'BATCH_RANGE_MISSING':'BATCH_READ_FAILED';
+  console.log('WL_STARTUP_BATCH fallback '+WL_STARTUP_BATCH_FALLBACK);return null;
+ }
  const store=wlStore_,dict=wlDictionaries_,previous=WL_STARTUP_READ_PROPERTIES;
  WL_STARTUP_READ_PROPERTIES={getProperty:key=>all[key]??null,getProperties:()=>({...all})};
  wlStore_=()=>ss;wlDictionaries_=sheet=>dict(sheet,true);
@@ -46,7 +51,7 @@ function wlTryStartupBatch_(token,dispatch){
   return result;
  }catch(e){
   // Initialization or template reconciliation needs the regular writable Sheets service.
-  if(String(e.message||'')==='STARTUP_NEEDS_RECONCILE')return null;
+  if(String(e.message||'')==='STARTUP_NEEDS_RECONCILE'){WL_STARTUP_BATCH_FALLBACK='TEMPLATE_RECONCILE';return null;}
   throw e;
  }finally{wlStore_=store;wlDictionaries_=dict;WL_STARTUP_READ_PROPERTIES=previous;}
 }

@@ -53,7 +53,7 @@ function wlRpc(token,name,args){
  };
  if(name==='wlStartup'){
   const started=Date.now(),fast=wlTryStartupBatch_(token,dispatch);if(fast)return fast;
-  const result=wlReadSnapshot_(dispatch);result.timing={...result.timing,readMode:'regular',requestServerMs:Date.now()-started};return result;
+  const result=wlReadSnapshot_(dispatch);result.timing={...result.timing,readMode:'regular',fallbackReason:WL_STARTUP_BATCH_FALLBACK,requestServerMs:Date.now()-started};return result;
  }
  return dispatch();
 }

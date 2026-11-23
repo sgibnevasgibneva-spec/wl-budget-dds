@@ -381,6 +381,32 @@ function wlInitializeV4_(){
     return {ok:true,spreadsheetUrl:ss.getUrl(),admin:wlCurrentEmail_()};
   });
 }
+// Federal five-day calendar. Update only from an enacted annual decree.
+// 2025: decree 1335 (04.10.2024); 2026: decree 1466 (24.09.2025);
+// 2027: decree 1187 (17.09.2026). Dates outside these years are unknown.
+const WL_WORK_CALENDAR={
+  '2025':{off:['05-02','05-08','06-13','11-03','12-31'],work:['11-01']},
+  '2026':{off:['01-09','03-09','05-11','12-31'],work:[]},
+  '2027':{off:['02-22','05-03','05-10','06-14','11-05','12-31'],work:['02-20']}
+};
+function wlCalendarDay_(calendar,key,day){
+ const [y,m]=String(key).split('-').map(Number),rules=calendar&&calendar[String(y)];
+ if(!rules)return 'unknown';
+ const md=String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+ if(rules.work.includes(md))return 'work';
+ if(rules.off.includes(md)||(m===1&&day>=1&&day<=8)||['02-23','03-08','05-01','05-09','06-12','11-04'].includes(md))return 'off';
+ return [0,6].includes(new Date(Date.UTC(y,m-1,day)).getUTCDay())?'off':'work';
+}
+function wlValidatePaymentDay_(key,day,oldValue,newValue){
+ const before=Number(oldValue)||0,after=Number(newValue)||0;
+ if(!after||before===after)return;
+ const status=wlCalendarDay_(WL_WORK_CALENDAR,key,day);
+ if(status==='unknown')throw Error('Производственный календарь на '+key.slice(0,4)+' год ещё не подключён. Обратитесь к администратору.');
+ if(status==='off')throw Error('Дата '+day+'.'+key.slice(5,7)+'.'+key.slice(0,4)+' — нерабочий день. Выберите рабочую дату.');
+}
+function wlValidatePaymentAmounts_(key,before,after){
+ Object.keys(after||{}).forEach(day=>wlValidatePaymentDay_(key,Number(day),(before||{})[day],after[day]));
+}
 function wlBoot_(){
   const start=Date.now(),ss=wlStore_(),user=wlUser_(ss);let periods=wlMonthList_(ss);
   if(!periods.length){wlEnsureDefaultMonths_(ss);periods=wlMonthList_(ss);}
@@ -392,7 +418,7 @@ function wlBoot_(){
   const nowKey=Utilities.formatDate(new Date(),Session.getScriptTimeZone(),'yyyy-MM');
   const current=active.some(m=>m.key===nowKey)?nowKey:(active.filter(m=>m.key<=nowKey).slice(-1)[0]||active[0]).key;
   const props=wlReadProperties_(),archivedYears=[...new Set(active.map(m=>m.key.slice(0,4)))].filter(y=>props.getProperty('WL_DDS_BDDS_ARCHIVED_'+y)==='true');
-  return {user,dict,months:active.map(m=>({key:m.key,status:m.status})),current,archivedYears,grouping:wlBddsGrouping_(ss)};
+  return {user,dict,months:active.map(m=>({key:m.key,status:m.status})),current,archivedYears,grouping:wlBddsGrouping_(ss),workCalendar:WL_WORK_CALENDAR};
 }
 function wlRowOrderIndex_(ss,key){
  const sh=ss.getSheetByName('WL_Порядок_строк'),result=new Map();if(!sh||sh.getLastRow()<2)return result;
@@ -462,7 +488,7 @@ function wlPatchChanges_(key,updates){
         const day=Number(item.day),[y,m]=key.split('-').map(Number);
         if(!Number.isInteger(day)||day<1||day>new Date(y,m,0).getDate())throw Error('Неверная дата');
         if(item.value===''||item.value==null)delete ent.row.amounts[day];
-        else{const n=Number(item.value);if(!Number.isFinite(n)||Math.abs(n)>1e12)throw Error('Недопустимая сумма');ent.row.amounts[day]=Math.round(n*100)/100;}
+        else{const n=Number(item.value);if(!Number.isFinite(n)||Math.abs(n)>1e12)throw Error('Недопустимая сумма');const next=Math.round(n*100)/100;wlValidatePaymentDay_(key,day,ent.row.amounts[day],next);ent.row.amounts[day]=next;}
       }else if(field==='formula'){
         const day=Number(item.day),[y,m]=key.split('-').map(Number);
         if(!Number.isInteger(day)||day<1||day>new Date(y,m,0).getDate())throw Error('Неверная дата формулы');
@@ -859,7 +885,7 @@ function wlImportExcelBatch_(key, payload){
         if(value!==0)amounts[d]=Math.round(value*100)/100;
       });
       const prepared={id,department,payment,source,category,description,amounts,cashFlowType:dict.incomeCategories.includes(category)&&!dict.categories.includes(category)?'income':'expense',reviewPending:!category};
-      if(!ids.has(id)&&!importedSignatures.has(signature(prepared)))rows.push(prepared);
+      if(!ids.has(id)&&!importedSignatures.has(signature(prepared))){wlValidatePaymentAmounts_(key,{},amounts);rows.push(prepared);}
     });
     if(rows.length){
       const backupKey='WL_DDS_XLSX_BACKUP_ID';
@@ -1026,6 +1052,7 @@ function wlExcelRoundTripCore_(key,payload,dryRun){
         if(!/^[a-z0-9]{8}$/.test(base))throw Error('Для существующей строки '+id+' отсутствует контрольная сумма. Скачайте свежий бюджет');
         if(wlExcelFingerprint_(key,old.row)!==base){stats.conflicts.push(dep+' / '+id+' — данные изменились после выгрузки');return;}
         if(wlExcelFingerprint_(key,next)===base){stats.unchanged++;return;}
+        wlValidatePaymentAmounts_(key,old.row.amounts,amounts);
         const merged=Object.assign({},old.row,{department:dep,payment,source,category:cat,description,amounts,cashFlowType:next.cashFlowType});
         if(merged.formulas&&typeof merged.formulas==='object'){
           merged.formulas=Object.assign({},merged.formulas);
@@ -1036,6 +1063,7 @@ function wlExcelRoundTripCore_(key,payload,dryRun){
         if(base){stats.conflicts.push(dep+' / '+id+' — строка не найдена (возможно удалена или перемещена)');return;}
         if(!/^imp-/.test(id))throw Error('Новая строка не может иметь произвольный ID: '+id);
         if(deleted.has(id)){stats.conflicts.push(dep+' / '+id+' — запись уже удалялась');return;}
+        wlValidatePaymentAmounts_(key,{},amounts);
         next.reviewPending=!cat;add.push(next);stats.added++;
       }
     });

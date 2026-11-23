@@ -197,7 +197,7 @@ header{flex:0 0 auto;position:relative;top:auto}
 .login-cover{position:fixed;inset:0;z-index:1000;background:#f3f6fa;display:grid;place-items:center;padding:20px}.login-card{max-width:410px;width:100%;padding:28px;background:white;border:1px solid #dce5ef;border-radius:14px;box-shadow:0 8px 28px #20345314}.login-card h2{margin:0 0 8px}.login-card p{line-height:1.5;color:#677b95}.login-card input{width:100%;margin:5px 0 10px}.login-card button{width:100%;margin:4px 0}.login-card .status{min-height:20px;display:block}.access-table .employee-code-cell{min-width:190px;width:190px}.employee-code{font:13px ui-monospace,Consolas,monospace;width:100%;min-width:180px;box-sizing:border-box;border:1px solid #d8e2ef;border-radius:6px;padding:7px;background:#f6f9fd;color:#233b61;cursor:copy}.employee-code:focus{outline:2px solid #95adf6}.access-table th,.access-table td{overflow-wrap:anywhere}#accessList{overflow-x:auto}#accessList>.access-table{min-width:760px}#accessList th:nth-child(5){width:200px}#accessList th:last-child{width:100px}.users-layout{grid-template-columns:minmax(0,2fr) minmax(310px,1fr)}.users-layout>.settings-card{min-width:0}@media(max-width:1200px){.users-layout{grid-template-columns:minmax(0,1fr)}}</style></head><body><div id="loginCover" class="login-cover"><div class="login-card"><h2>Вход в бюджет ДДС</h2><p>Введите почту и личный код, который вам передал администратор.</p><input class="input" id="loginEmail" type="email" autocomplete="email" placeholder="Электронная почта"><div id="loginCodeArea"><input class="input" id="loginCode" autocomplete="current-password" type="password" maxlength="20" placeholder="Личный код"><button class="btn primary" id="loginVerify">Войти</button></div><span class="status" id="loginStatus" role="status"></span></div></div>
 <header><div class="top">
  <div class="brand"><span class="brand-mark"><img id="brandLogo" alt="WL" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAD8AAAAeCAYAAACbr8ZMAAAFlklEQVR4nO2Z23PV1RXHP2vv3zkhAwkhhoREwyWlIgYMlQC1NbQUa2VoR2YctR1m9MFxfPDBf8eZjr51egMfvJY4441gRwVjMUII6TEhF4I5kOQkJzm3314+/AoEzu/8cg5gfQjft/Pb6/bde+29115HFhYWWK4wP3YAPybukl+uWNbkvZIjuQz2P58jiX41k+No/Vr89k5xHXvC5bMZzPk+TKJfZWoSmZ1Ba1bjOn4u/o5HQlUkNYX96t/I2LDK7DTksrjN7eJ3PYGurCmLgCQnMOf7kJGEmiuTYC3+1p+J69yLrqiunLykpvD++qqaS2OQTiHZDMSrMIlz6k9elMJjh64L5/PY3hPYLz5Rmb4M6Vkkl4VCHrwYZiSh6nnitu26bn8hjf3kPcyZXpXpy8hCOpB3DpkYVRkbJv/8K4IXK036wiD2s4/UXBhE5lIwPxf4FUHGhtWNDZF/9iWpmLzX/Ybac6fB+dc/5rJIcgL78bvqWtaLe/BhZGIE792/qxn9FplKguqNhgp5JHkJ7/gxzW3bJQDmbC/243fUjA4FQd9Mai6FPduLn+jH3b+9eDw9h/3oLTXfnEKuTCKZm65qVWT6Mqb3U+Tgn9BVteWTl2wG82XPjcQXj89OY3u6Fd8X79gRNRMjUCiUdABgRhKQz+F98Cb2VI9KcgKcK61QyGPGLxSRl6EBvPf+EUx2ejbSp2QWkOnLFZL/bhyZT0eT+e8ZzORFlcmLkXLXsDBP7G+vqjl3OnS1w6Dmxow1iX68o6+puTgSPXGLbUj0eV5EXiVymwBBdlAucQB12NOfQz5Xvso9Tdf9DQ0QO/Kayvhw+T5jcbR+baRI0dRoYzNaU1e+k3JRAXFicVzbAwCYxFli//xzZcQBt2kLLHHaF+dFfAX+voNLL/8PCNe+E6pXIslLxI68rmasMuIAfmeXsEQWh24Kf/c+/K7fVezwTqGw7w+Cc3hv/0Vl/ELF+lq7Br9955JyoeR1VS2F/YfEtbZV7Ph24Tr24O7diD15HHumF9AldW6Gv/eAUEaRVPI41Lp7cJ1d//f0Lzx2SGR+Fu/9N5RctnIDYsAYZHRoSdHS5S3gGtZV7vw2UNj/JK5lA96xo0hy4taMqGJ7jqk51YNrbcM/+EcpdYBHkpeZqVsL4Bbgtu/C/9VBkVwW+9mHWlQtlg0NKj8mkeQEkstq/vDLgi2mGlkFmIGvbzWCiuA2bCb/+8OitXXI2a+Q1J2ZdMlmsH0nMWe+DB2PJn/u9B0JIgqueT35p14QbWwGwPadvI1VD0Eui+kPX8SS5K+9tsqE1q7BNbdWFJdre4D84ZdFWzdx9U42o99WZKMcyOxM6PfSK5/NlG3cbW4n/9wrouvKJ+869pB/+kXR+zYFJ/RVpOfKtlEurmbVzSh54GlNHXhe5ItNq6rx9x7A3/moaGMLMjQgtvfT6JyNxSk8+jj+Lx8XDblNtL4BSUc/ftyWh/C7nhC1FjM8iP3wLZVSixWL47Z3hl7ZpU/76mr8Pb/BnugO0fJwDz5M4ZH9ove1oTWrg6A6dqMnuoO3fZhO+0783b8W19qG1q4JJ9a5V8xIInQCXWML/i9+K27rDrRhHYigrT/BNbZI7OjrWvTMjcXJH3hGXMuGUF8S1beXqST2RLeawW/A92HValxDE7p1h7i1zWh9I1i7KDofM9CHPXX8f2WpQnwFbuP9uJ9uE21sRtc0EHbtXPM5l8Ie/xfmfJ+Sy0B9E66uHm26V9z6zWhDE1SvvFEpl8UMD2IGvlYzPgypKbR+bdBC2/IQpaq9SPIQNC+YSwVdGi8G8apgSywmvRh+AZm5AgvzwW9jYGVN0FQwJXSKJmAGZlNBQyW+AuJxtKo6+pXmXNDguNoSi1ehq+shFi/t5+4/NssUd8kvV3wPXGlgok7oPAAAAAAASUVORK5CYII="></span><div><h1>Бюджет ДДС</h1><small>Планирование движения денежных средств · все суммы в рублях</small></div></div>
- <div class="period"><button class="arrow" id="prev" title="Предыдущий месяц">‹</button><select id="monthSelect" aria-label="Выбрать месяц"></select><button class="arrow" id="next" title="Следующий месяц">›</button><span class="badge" id="monthStatus"></span><button class="btn small admin-only hidden" id="addMonthBtn">+ Месяц</button><button class="btn small admin-only hidden" id="closeMonthBtn">Закрыть месяц</button></div>
+ <div class="period"><button class="arrow" id="prev" title="Предыдущий месяц">‹</button><select id="monthSelect" aria-label="Выбрать месяц"></select><button class="arrow" id="next" title="Следующий месяц">›</button><span class="badge" id="monthStatus"></span><span class="status error" id="calendarNotice" role="status"></span><button class="btn small admin-only hidden" id="addMonthBtn">+ Месяц</button><button class="btn small admin-only hidden" id="closeMonthBtn">Закрыть месяц</button></div>
 </div><div style="display:flex;align-items:center"><nav class="nav" id="tabs" style="flex:1"></nav><button type="button" class="btn small" id="loginLogout" style="margin-right:14px">Выйти</button></div></header>
 <div class="wrap">
 <div class="errorpanel hidden" id="errorPanel"></div>
@@ -335,6 +335,14 @@ function refreshCurrentCachedMonth(){
 }
 function monthLabel(k){const [y,m]=k.split('-').map(Number);return monthsRu[m-1]+' '+y;}
 function numDays(){const [y,m]=monthKey.split('-').map(Number);return new Date(y,m,0).getDate();}
+function calendarPaymentDay(key,day){
+ const [y,m]=String(key).split('-').map(Number),rules=boot&&boot.workCalendar&&boot.workCalendar[String(y)];
+ if(!rules)return 'unknown';
+ const md=String(m).padStart(2,'0')+'-'+String(day).padStart(2,'0');
+ if(rules.work.includes(md))return 'work';
+ if(rules.off.includes(md)||(m===1&&day>=1&&day<=8)||['02-23','03-08','05-01','05-09','06-12','11-04'].includes(md))return 'off';
+ return [0,6].includes(new Date(Date.UTC(y,m-1,day)).getUTCDay())?'off':'work';
+}
 function canEdit(){return !loading&&!closed&&boot&&boot.user&&boot.user.tabEdit.includes('Отделы')&&boot.user.edit.includes(dept);}
 function canEditCategory(){return canEdit()&&boot.user.admin;}
 function status(s,error){$('saveStatus').textContent=s;$('saveStatus').classList.toggle('error',!!error);}
@@ -342,6 +350,7 @@ function showError(e){$('errorPanel').textContent='Ошибка: '+(e&&e.message
 function hideError(){$('errorPanel').classList.add('hidden');}
 function periodStatus(){
  const period=months.find(m=>m.key===monthKey),s=period?period.status:'Открыт';closed=s==='Закрыт';$('monthStatus').textContent=closed?'🔒 Закрыт':'● Открыт';$('monthStatus').className='badge '+(closed?'closed':'good');
+ const notice=$('calendarNotice');if(notice)notice.textContent=calendarPaymentDay(monthKey,1)==='unknown'?'Календарь на '+monthKey.slice(0,4)+' год не подключён — новые оплаты недоступны':'';
  $('closeMonthBtn').textContent=closed?'Открыть месяц':'Закрыть месяц';$('currentMonthBadge').textContent=monthLabel(monthKey);
  $('prev').disabled=months.findIndex(m=>m.key===monthKey)<=0;$('next').disabled=months.findIndex(m=>m.key===monthKey)>=months.length-1;
 }
@@ -357,7 +366,7 @@ function views(){VIEWS.forEach((id,i)=>$(id).classList.toggle('hidden',activeTab
 function departmentOptions(){const s=$('departmentSelect');s.innerHTML=boot.user.view.map(d=>'<option value="'+esc(d)+'">'+esc(d)+'</option>').join('');if(!boot.user.view.includes(dept))dept=boot.user.view[0]||'';s.value=dept;$('addRow').disabled=!canEdit();refreshBulkUi();}
 function rowSum(r){return Object.values(r.amounts||{}).reduce((s,n)=>s+(Number(n)||0),0);}
 function tableHead(){let h='<tr><th class="fixed c0"><input id="selectAllRows" type="checkbox" aria-label="Выбрать все строки отдела"></th><th class="fixed c1">Как платим?</th><th class="fixed c2">Откуда платим?</th><th class="fixed c3">Статья ДДС</th><th class="fixed c4">Описание/название затрат</th>';
- const [y,m]=monthKey.split('-').map(Number);for(let d=1;d<=numDays();d++){const dow=new Date(y,m-1,d).getDay();h+='<th class="day'+([0,6].includes(dow)?' weekend':'')+'">'+d+'.'+('0'+m).slice(-2)+'<small>'+daysRu[dow]+'</small></th>';}h+='<th class="money-total">Итого за месяц</th><th style="width:95px;min-width:95px">Действие</th></tr>';$('ledgerHead').innerHTML=h;const all=$('selectAllRows');if(all)all.onchange=e=>setAllRows(e.target.checked);
+ const [y,m]=monthKey.split('-').map(Number);for(let d=1;d<=numDays();d++){const dow=new Date(y,m-1,d).getDay(),dayType=calendarPaymentDay(monthKey,d);h+='<th class="day'+(dayType==='off'?' weekend':'')+'" title="'+(dayType==='unknown'?'Календарь на этот год ещё не подключён':dayType==='off'?'Нерабочий день':'Рабочий день')+'">'+d+'.'+('0'+m).slice(-2)+'<small>'+daysRu[dow]+'</small></th>';}h+='<th class="money-total">Итого за месяц</th><th style="width:95px;min-width:95px">Действие</th></tr>';$('ledgerHead').innerHTML=h;const all=$('selectAllRows');if(all)all.onchange=e=>setAllRows(e.target.checked);
 }
 function addSelect(td,r,key,list){const s=document.createElement('select');s.disabled=!canEdit();s.setAttribute('aria-label',key);let options=['',...list];if(r[key]&&!list.includes(r[key]))options.splice(1,0,r[key]);options.forEach(v=>{let o=document.createElement('option');o.value=v;o.textContent=v||'Выберите из списка';s.appendChild(o)});s.value=r[key]||'';s.onchange=()=>{r[key]=s.value;queue(r,key,s.value);};td.appendChild(s);}
 
@@ -576,9 +585,10 @@ function makeRow(r){const tr=document.createElement('tr');tr.dataset.rowId=r.id;
  const dtd=document.createElement('td');dtd.className='fixed c4'+(r.reviewPending?' review-needed':'');const textarea=document.createElement('textarea');textarea.rows=2;textarea.placeholder='Название расхода';textarea.value=r.description||'';textarea.disabled=!canEdit();textarea.setAttribute('aria-label','Описание/название затрат');textarea.oninput=()=>{if(textarea.value!==r.description){r.reviewPending=true;dtd.classList.add('review-needed');if(!dtd.querySelector('.review-notice')){const note=document.createElement('span');note.className='review-notice';note.textContent='⚠ Требует проверки статьи ДДС';dtd.appendChild(note);}}r.description=textarea.value;queue(r,'description',r.description);};
  dtd.appendChild(textarea);if(r.reviewPending){const note=document.createElement('span');note.className='review-notice';note.textContent='⚠ Описание изменено — проверьте статью ДДС';dtd.appendChild(note);}tr.appendChild(dtd);
  const [y,m]=monthKey.split('-').map(Number);
- for(let day=1;day<=numDays();day++){const td=document.createElement('td');const weekend=[0,6].includes(new Date(y,m-1,day).getDay());td.className='amount-cell'+(weekend?' weekend':'');const v=document.createElement('input');v.type='text';v.inputMode='decimal';v.className='amount';v.disabled=!canEdit();v.value=r.amounts&&r.amounts[day]!=null?fmt.format(r.amounts[day]):'';v.setAttribute('aria-label',day+'.'+m);
+ for(let day=1;day<=numDays();day++){const td=document.createElement('td');const dayType=calendarPaymentDay(monthKey,day),existing=Number(r.amounts&&r.amounts[day])||0;td.className='amount-cell'+(dayType==='off'?' weekend':'');const v=document.createElement('input');v.type='text';v.inputMode='decimal';v.className='amount';v.disabled=!canEdit()||(dayType!=='work'&&!existing);v.value=r.amounts&&r.amounts[day]!=null?fmt.format(r.amounts[day]):'';v.setAttribute('aria-label',day+'.'+m);if(dayType!=='work')v.title=dayType==='off'?'Нерабочий день. Ранее назначенную сумму можно очистить.':'Календарь на этот год ещё не подключён';
  v.onfocus=()=>{if(r.formulas&&r.formulas[day])v.value=r.formulas[day];};
  v.oninput=()=>{
+   if(dayType!=='work'&&v.value.trim()!==''){v.value=r.amounts&&r.amounts[day]!=null?fmt.format(r.amounts[day]):'';status(dayType==='off'?'На нерабочую дату нельзя назначить оплату':'Календарь на этот год ещё не подключён',true);return;}
    if(v.value.trim().startsWith('=')){v.style.background='#eef4ff';v.title='Формула будет рассчитана после выхода из ячейки';return;}
    const pos=v.selectionStart||0, before=v.value.substring(0,pos).replace(/\s/g,'');
    const pretty=inputMoney(v.value);
@@ -596,6 +606,7 @@ function makeRow(r){const tr=document.createElement('tr');tr.dataset.rowId=r.id;
    updateHrRestaff(r,day,n);
  };
  v.onblur=()=>{
+   if(dayType!=='work'&&!Number(r.amounts&&r.amounts[day]))v.disabled=true;
    const source=v.value.trim();
    if(source.startsWith('=')){
      try{
@@ -1153,7 +1164,7 @@ function renderSummary(){
  const [year,month]=monthKey.split('-').map(Number),days=numDays(),showDepartments=monthly&&!cfoDepartmentsCollapsed,cols=monthly?(showDepartments?deps.length:0):days;
  let header='<tr><th class="catcol">Статья ДДС</th>';
  if(showDepartments)deps.forEach(d=>header+='<th>'+esc(d)+'</th>');
- else if(!monthly)for(let d=1;d<=days;d++)header+='<th class="dailycol'+([0,6].includes(new Date(year,month-1,d).getDay())?' weekend':'')+'">'+d+'.'+('0'+month).slice(-2)+'</th>';
+ else if(!monthly)for(let d=1;d<=days;d++)header+='<th class="dailycol'+(calendarPaymentDay(monthKey,d)==='off'?' weekend':'')+'">'+d+'.'+('0'+month).slice(-2)+'</th>';
  header+='<th>Итого за месяц</th></tr>';$('summaryHead').innerHTML=header;
  $('summaryTable').classList.toggle('cfo-compact',monthly&&!showDepartments);
  const body=$('summaryBody');body.innerHTML='';

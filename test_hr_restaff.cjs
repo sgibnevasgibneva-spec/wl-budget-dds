@@ -1,0 +1,14 @@
+const fs=require('fs'),vm=require('vm'),assert=require('assert');
+const html=fs.readFileSync('Index.html','utf8');
+const code=html.slice(html.indexOf('function hrRestaffTargets('),html.indexOf('/** Безопасный арифметический',html.indexOf('function hrRestaffTargets(')));
+const base={id:'base',department:'HR',description:'Рестафф',amounts:{}},commission={id:'fee',department:'HR',description:'Комиссия Рестафф',amounts:{}},vat={id:'vat',department:'HR',description:'минус ндс с рестафа',amounts:{}};
+let queued=[];const c={rows:[base,commission,vat],document:{querySelectorAll:()=>[]},queue:(r,f,v,d)=>queued.push([r.id,f,v,d]),fmt:{format:String},money:String,rowSum:()=>0};
+vm.createContext(c);vm.runInContext(code,c);
+c.updateHrRestaff(base,12,3000000);
+assert.equal(commission.amounts[12],128258.6);assert.equal(vat.amounts[12],688216.89);
+assert.deepEqual(queued.map(x=>x[3]),[12,12]);
+c.updateHrRestaff(base,13,3500000);assert.equal(commission.amounts[13],149635.04);assert.equal(vat.amounts[13],802919.71);assert.equal(commission.amounts[12],128258.6);
+c.updateHrRestaff(base,12,'');assert.equal(commission.amounts[12],undefined);assert.equal(vat.amounts[12],undefined);assert.equal(vat.amounts[13],802919.71);
+queued=[];c.rows.push({...commission,id:'duplicate'});c.updateHrRestaff(base,13,100);assert.equal(queued.length,0);
+assert.equal(c.hrRestaffTargets({...base,department:'IT'},c.rows),null);
+console.log('HR restaff calculation, dates, clearing and ambiguous rows verified');

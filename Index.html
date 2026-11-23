@@ -493,6 +493,30 @@ function nearestAvailableCurrentMonth(list,serverKey){
 }
 function inputMoney(s){const raw=String(s).replace(/[\s\u00A0\u202F]/g,'').replace('.',',');let m=raw.match(/^(-?)(\d*)(,\d{0,2})?$/);if(!m)return null;return m[1]+m[2].replace(/\B(?=(\d{3})+(?!\d))/g,' ')+(m[3]||'');}
 function parseMoney(s){let raw=String(s).replace(/[\s\u00A0\u202F]/g,'').replace(',','.');if(!raw)return '';if(!/^-?\d+(\.\d{0,2})?$/.test(raw))return null;return Number(raw);}
+// Only the three specifically named HR rows form this calculation.
+function hrRestaffTargets(source, allRows){
+ const clean=x=>String(x||'').trim().toLocaleLowerCase('ru').replace(/\s+/g,' ');
+ if(source.department!=='HR'||!/^рестаф+$/.test(clean(source.description)))return null;
+ const own=allRows.filter(x=>x.department==='HR');
+ const base=own.filter(x=>/^рестаф+$/.test(clean(x.description)));
+ const commission=own.filter(x=>/^комиссия рестаф+$/.test(clean(x.description)));
+ const vat=own.filter(x=>/^минус ндс с рестафа+$/.test(clean(x.description)));
+ return base.length===1&&commission.length===1&&vat.length===1?[commission[0],vat[0]]:null;
+}
+function updateHrRestaff(source,day,value){
+ const targets=hrRestaffTargets(source,rows);if(!targets)return;
+ const commission=value===''?'':Math.round((value/0.959-value)*100)/100;
+ const vat=value===''?'':Math.round((value+commission)*0.22*100)/100;
+ targets.forEach((target,i)=>{
+  const calculated=i===0?commission:vat;
+  if(!target.amounts)target.amounts={};
+  if(calculated==='')delete target.amounts[day];else target.amounts[day]=calculated;
+  if(target.formulas&&target.formulas[day]){delete target.formulas[day];queue(target,'formula','',day);}
+  queue(target,'amount',calculated,day);
+  const tr=Array.from(document.querySelectorAll('#ledgerBody tr[data-row-id]')).find(x=>x.dataset.rowId===target.id);
+  if(tr){const input=tr.querySelectorAll('input.amount')[day-1];if(input)input.value=calculated===''?'':fmt.format(calculated);const total=tr.querySelector('.money-total');if(total)total.textContent=money(rowSum(target));}
+ });
+}
 /** Безопасный арифметический калькулятор: без eval/Function и без доступа к коду.
  * Разрешены только + - * /, скобки, числа с точкой или запятой.
  * Считаем дробями BigInt, а затем ОТСЕКАЕМ дробь до копеек.
@@ -569,6 +593,7 @@ function makeRow(r){const tr=document.createElement('tr');tr.dataset.rowId=r.id;
    if(r.formulas&&r.formulas[day]){delete r.formulas[day];queue(r,'formula','',day);}
    tr.querySelector('.money-total').textContent=money(rowSum(r));
    queue(r,'amount',n,day);
+   updateHrRestaff(r,day,n);
  };
  v.onblur=()=>{
    const source=v.value.trim();
@@ -580,7 +605,7 @@ function makeRow(r){const tr=document.createElement('tr');tr.dataset.rowId=r.id;
        v.style.background='';v.title='Формула: '+source;
        v.value=fmt.format(truncateToKopecks(n));
        tr.querySelector('.money-total').textContent=money(rowSum(r));
-       queue(r,'amount',n,day);queue(r,'formula',source,day);
+       queue(r,'amount',n,day);queue(r,'formula',source,day);updateHrRestaff(r,day,n);
      }catch(e){v.style.background='#fff0f0';v.title='Ошибка формулы: '+e.message;status('Ошибка формулы: '+e.message,true);}
      return;
    }
